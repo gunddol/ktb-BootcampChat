@@ -12,7 +12,6 @@ info:
     - 채팅방 입장/퇴장 관리
     - 메시지 읽음 상태 처리
     - 메시지 리액션 (이모지)
-    - AI 스트리밍 메시지
     - 파일 전송
 
   contact:
@@ -214,37 +213,7 @@ channels:
         $ref: '#/components/messages/SessionEndedResponse'
     description: 세션 종료 알림
 
-  # ============================================
-  # AI Streaming Events
-  # ============================================
 
-  aiMessageStart:
-    address: aiMessageStart
-    messages:
-      aiMessageStartResponse:
-        $ref: '#/components/messages/AiMessageStartResponse'
-    description: AI 스트리밍 시작
-
-  aiMessageChunk:
-    address: aiMessageChunk
-    messages:
-      aiMessageChunkResponse:
-        $ref: '#/components/messages/AiMessageChunkResponse'
-    description: AI 스트리밍 청크
-
-  aiMessageComplete:
-    address: aiMessageComplete
-    messages:
-      aiMessageCompleteResponse:
-        $ref: '#/components/messages/AiMessageCompleteResponse'
-    description: AI 스트리밍 완료
-
-  aiMessageError:
-    address: aiMessageError
-    messages:
-      aiMessageErrorResponse:
-        $ref: '#/components/messages/AiMessageErrorResponse'
-    description: AI 스트리밍 에러
 
 operations:
   # Client → Server Operations
@@ -426,33 +395,7 @@ operations:
     summary: 세션 종료 알림 수신
     description: 서버가 세션 종료를 알립니다.
 
-  receiveAiMessageStart:
-    action: receive
-    channel:
-      $ref: '#/channels/aiMessageStart'
-    summary: AI 메시지 스트리밍 시작 수신
-    description: 서버가 AI 메시지 스트리밍 시작을 알립니다.
 
-  receiveAiMessageChunk:
-    action: receive
-    channel:
-      $ref: '#/channels/aiMessageChunk'
-    summary: AI 메시지 청크 수신
-    description: 서버가 AI 메시지 청크를 전송합니다.
-
-  receiveAiMessageComplete:
-    action: receive
-    channel:
-      $ref: '#/channels/aiMessageComplete'
-    summary: AI 메시지 완료 수신
-    description: 서버가 AI 메시지 스트리밍 완료를 알립니다.
-
-  receiveAiMessageError:
-    action: receive
-    channel:
-      $ref: '#/channels/aiMessageError'
-    summary: AI 메시지 에러 수신
-    description: 서버가 AI 메시지 에러를 알립니다.
 
 components:
   messages:
@@ -711,137 +654,7 @@ components:
           - reason
           - message
 
-    # ============================================
-    # AI Streaming Payloads
-    # ============================================
 
-    AiMessageStartResponse:
-      name: AiMessageStart
-      title: AI 메시지 시작
-      summary: AI 스트리밍 시작 페이로드
-      contentType: application/json
-      payload:
-        type: object
-        properties:
-          messageId:
-            type: string
-            description: 메시지 ID
-          aiType:
-            type: string
-            enum: [CLAUDE, GEMINI, OPENAI]
-            description: AI 타입
-          timestamp:
-            type: integer
-            format: int64
-            description: 시작 시간 (milliseconds)
-        required:
-          - messageId
-          - aiType
-          - timestamp
-
-    AiMessageChunkResponse:
-      name: AiMessageChunk
-      title: AI 메시지 청크
-      summary: AI 스트리밍 청크 페이로드
-      contentType: application/json
-      payload:
-        type: object
-        properties:
-          messageId:
-            type: string
-            description: 메시지 ID
-          currentChunk:
-            type: string
-            description: 현재 청크
-          fullContent:
-            type: string
-            description: 전체 내용 (누적)
-          isCodeBlock:
-            type: boolean
-            description: 코드 블록 여부
-          timestamp:
-            type: integer
-            format: int64
-            description: 타임스탬프
-          aiType:
-            type: string
-            enum: [CLAUDE, GEMINI, OPENAI]
-            description: AI 타입
-          isComplete:
-            type: boolean
-            description: 완료 여부
-        required:
-          - messageId
-          - fullContent
-          - isCodeBlock
-          - isComplete
-
-    AiMessageCompleteResponse:
-      name: AiMessageComplete
-      title: AI 메시지 완료
-      summary: AI 스트리밍 완료 페이로드
-      contentType: application/json
-      payload:
-        type: object
-        properties:
-          messageId:
-            type: string
-            description: 임시 메시지 ID
-          _id:
-            type: string
-            description: 저장된 메시지 ID
-          content:
-            type: string
-            description: 완료된 메시지 내용
-          aiType:
-            type: string
-            enum: [CLAUDE, GEMINI, OPENAI]
-            description: AI 타입
-          timestamp:
-            type: integer
-            format: int64
-            description: 완료 시간
-          isComplete:
-            type: boolean
-            description: 완료 여부
-          query:
-            type: string
-            description: 원본 쿼리
-          reactions:
-            type: object
-            additionalProperties:
-              type: array
-              items:
-                type: string
-            description: 리액션 맵
-        required:
-          - _id
-          - content
-          - aiType
-          - timestamp
-
-    AiMessageErrorResponse:
-      name: AiMessageError
-      title: AI 메시지 에러
-      summary: AI 스트리밍 에러 페이로드
-      contentType: application/json
-      payload:
-        type: object
-        properties:
-          messageId:
-            type: string
-            description: 메시지 ID
-          error:
-            type: string
-            description: 에러 메시지
-          aiType:
-            type: string
-            enum: [CLAUDE, GEMINI, OPENAI]
-            description: AI 타입
-        required:
-          - messageId
-          - error
-          - aiType
 
   schemas:
     # ============================================
@@ -955,14 +768,11 @@ components:
           $ref: '#/components/schemas/UserResponse'
         type:
           type: string
-          enum: [text, file, system, ai]
+          enum: [text, file, system]
           description: 메시지 타입
         file:
           $ref: '#/components/schemas/FileResponse'
-        aiType:
-          type: string
-          enum: [CLAUDE, GEMINI, OPENAI]
-          description: AI 타입 (AI 메시지인 경우)
+
         timestamp:
           type: integer
           format: int64
@@ -1074,11 +884,7 @@ components:
         hasMore:
           type: boolean
           description: 더 많은 메시지 존재 여부
-        activeStreams:
-          type: array
-          items:
-            type: object
-          description: 활성 스트림 목록
+
       required:
         - roomId
         - participants

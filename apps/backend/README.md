@@ -1,14 +1,13 @@
 # Chat App Backend (Spring Boot)
 
 ## 개요
-Spring Boot 3.5와 Java 21을 사용해 구축한 실시간 채팅 백엔드입니다. MongoDB를 통한 영속화와 MongoDB TTL 기반 세션·레이트리밋, JWT 인증, OpenAI 연동을 제공하며 Socket.IO 호환 실시간 메시징을 지원합니다.
+Spring Boot 3.5와 Java 21을 사용해 구축한 실시간 채팅 백엔드입니다. MongoDB를 통한 영속화와 MongoDB TTL 기반 세션·레이트리밋, JWT 인증을 제공하며 Socket.IO 호환 실시간 메시징을 지원합니다.
 
 ## 주요 기술 스택
 - Java 21, Spring Boot 3.5 (Web, Validation, Security, OAuth2 Resource Server)
 - MongoDB 8 (로컬 또는 Docker Compose)
 - Netty Socket.IO 서버 (`com.corundumstudio:netty-socketio`)
 - Spring Security + JWT, 커스텀 레이트 리미터
-- Spring AI(OpenAI) 기반 대화형 응답 생성
 - Testcontainers, JUnit 5, Reactor Test를 이용한 검증
 
 ## 프로젝트 구조
@@ -66,7 +65,6 @@ make verify-java
 | `REDIS_PORT` | ✅ | `-` | Redis 연결 문자열                |
 | `PORT` | ✅ | `5001` | HTTP API 포트 (`server.port`) |
 | `WS_PORT` | ✅ | `5002` | Socket.IO 서버 포트             |
-| `OPENAI_API_KEY` | ❌ | `your_openai_api_key_here` | OpenAI 호출용 API Key          |
 
 `.env.template` 파일을 복사해 기본 값을 채운 뒤 필요에 따라 수정하세요. `make setup-env` 명령어로 자동 생성할 수도 있습니다.
 

@@ -108,9 +108,6 @@ tail -f logs/app.log
    # 서버 포트
    PORT=5001
    WS_PORT=5002
-
-   # OpenAI API
-   OPENAI_API_KEY=sk-...
    ```
 
 3. **MongoDB 및 Redis 실행 확인**
