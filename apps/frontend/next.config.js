@@ -1,22 +1,23 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false, // 에러 처리 문제 해결을 위해 일시적으로 비활성화
+  reactStrictMode: false,
   transpilePackages: ['@vapor-ui/core', '@vapor-ui/icons'],
-  // Docker 빌드를 위한 standalone 출력 모드 (개발 환경에는 영향 없음)
-  output: 'standalone',
-  // monorepo에서 standalone 빌드 시 중첩 경로 방지
-  outputFileTracingRoot: __dirname,
-  // 개발 환경에서의 에러 오버레이 설정
-  devIndicators: {
-    buildActivity: true,
-    buildActivityPosition: 'bottom-right'
+  
+  // ⭐ S3/CloudFront 배포를 위한 설정
+  output: 'export',  // 정적 HTML 출력
+  
+  // 이미지 최적화 비활성화 (S3는 이미지 최적화 불가)
+  images: {
+    unoptimized: true,
   },
-  // 개발 환경에서만 더 자세한 에러 로깅
-  ...(process.env.NODE_ENV === 'development' && {
-    experimental: {
-      forceSwcTransforms: true
-    }
-  })
+  
+  // Trailing slash (S3 호환성)
+  trailingSlash: true,
+  
+  // Asset prefix (CloudFront URL, 배포 후 추가)
+  assetPrefix: process.env.NEXT_PUBLIC_CDN_URL || '',
+  
+  // Gzip 압축
+  compress: true,
 };
-
 module.exports = nextConfig;
