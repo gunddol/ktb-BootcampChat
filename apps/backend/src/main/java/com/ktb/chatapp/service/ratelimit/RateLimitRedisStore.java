@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class RateLimitMongoStore implements RateLimitStore {
+public class RateLimitRedisStore implements RateLimitStore {
     
     private final RateLimitRepository rateLimitRepository;
     
