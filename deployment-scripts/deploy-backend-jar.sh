@@ -85,7 +85,6 @@ set -e
 
 # JAR 파일 이동
 sudo mv /tmp/ktb-chat-backend.jar /opt/ktb-backend/ktb-BootcampChat/apps/backend/target/ktb-chat-backend-0.0.1-SNAPSHOT.jar
-sudo chown ktb-backend:ktb-backend /opt/ktb-backend/ktb-BootcampChat/apps/backend/target/ktb-chat-backend-0.0.1-SNAPSHOT.jar
 
 # .env 파일 업데이트
 cd /opt/ktb-backend/ktb-BootcampChat/apps/backend
@@ -102,11 +101,10 @@ WS_PORT=5002
 SPRING_PROFILES_ACTIVE=prod
 ENVEOF
 
-sudo chown ktb-backend:ktb-backend .env
-
 # Service 재시작
 echo "🔄 Restarting service..."
-sudo systemctl restart ktb-backend
+cd /opt/ktb-backend/ktb-BootcampChat/apps/backend
+./app-control.sh restart
 
 # 대기
 sleep 15
