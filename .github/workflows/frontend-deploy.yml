@@ -49,9 +49,9 @@ jobs:
           const nextConfig = {
             reactStrictMode: false,
             transpilePackages: ['@vapor-ui/core', '@vapor-ui/icons'],
-            output: 'export',
+            output: undefined,
             images: { unoptimized: true },
-            trailingSlash: true,
+            trailingSlash: false,
             compress: true,
           };
           module.exports = nextConfig;
