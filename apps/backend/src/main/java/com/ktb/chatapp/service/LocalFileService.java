@@ -33,15 +33,15 @@ public class LocalFileService implements FileService {
     private final RoomRepository roomRepository;
 
     public LocalFileService(@Value("${file.upload-dir:uploads}") String uploadDir,
-                      FileRepository fileRepository,
-                      MessageRepository messageRepository,
-                      RoomRepository roomRepository) {
+            FileRepository fileRepository,
+            MessageRepository messageRepository,
+            RoomRepository roomRepository) {
         this.fileRepository = fileRepository;
         this.messageRepository = messageRepository;
         this.roomRepository = roomRepository;
         this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
     }
-    
+
     @PostConstruct
     public void init() {
         try {
@@ -155,17 +155,13 @@ public class LocalFileService implements FileService {
             Message message = messageRepository.findByFileId(fileEntity.getId())
                     .orElseThrow(() -> new RuntimeException("파일과 연결된 메시지를 찾을 수 없습니다"));
 
-            // 3. 방 조회 (사용자가 방 참가자인지 확인)
-            Room room = roomRepository.findById(message.getRoomId())
-                    .orElseThrow(() -> new RuntimeException("방을 찾을 수 없습니다"));
-
-            // 4. 권한 검증
-            if (!room.getParticipantIds().contains(requesterId)) {
+            // 3. 권한 검증 (방 참가자인지 확인)
+            if (!roomRepository.existsByIdAndParticipantIdsContains(message.getRoomId(), requesterId)) {
                 log.warn("파일 접근 권한 없음: {} (사용자: {})", fileName, requesterId);
                 throw new RuntimeException("파일에 접근할 권한이 없습니다");
             }
 
-            // 5. 파일 경로 검증 및 로드
+            // 4. 파일 경로 검증 및 로드
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
             FileUtil.validatePath(filePath, this.fileStorageLocation);
 
