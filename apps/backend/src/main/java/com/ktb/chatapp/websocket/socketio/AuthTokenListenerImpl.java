@@ -30,7 +30,6 @@ public class AuthTokenListenerImpl implements AuthTokenListener {
 
     private final JwtService jwtService;
     private final SessionService sessionService;
-    private final UserRepository userRepository;
     private final ObjectProvider<ConnectionLoginHandler> socketIOChatHandlerProvider;
     private final UserService userService;
 

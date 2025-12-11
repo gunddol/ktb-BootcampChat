@@ -39,7 +39,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/rooms")
 public class RoomController {
 
-    private final UserRepository userRepository;
     private final MessageRepository messageRepository;
     private final RoomService roomService;
     private final UserService userService;

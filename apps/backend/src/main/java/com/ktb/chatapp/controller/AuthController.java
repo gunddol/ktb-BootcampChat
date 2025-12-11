@@ -91,7 +91,7 @@ public class AuthController {
         if (errors != null) return errors;
         
         // Check existing user
-        // Todo: existEmail
+
         if (userRepository.existsByEmail(registerRequest.getEmail())){
 //        if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
