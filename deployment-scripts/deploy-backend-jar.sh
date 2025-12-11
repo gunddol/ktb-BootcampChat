@@ -64,14 +64,21 @@ for IP in $BACKEND_IPS; do
     echo "🔄 Deploying to: $IP"
     echo "======================================"
     
-    # JAR 파일 복사
-    echo "📤 Uploading JAR..."
-    scp -i "$KEY_PATH" -o StrictHostKeyChecking=no -o ProxyJump=ubuntu@${BASTION_IP} \
-        "$JAR_FILE" ubuntu@$IP:/tmp/ktb-chat-backend.jar
+    # JAR 파일을 Bastion으로 먼저 복사
+    echo "📤 Uploading JAR to Bastion..."
+    scp -i "$KEY_PATH" -o StrictHostKeyChecking=no \
+        "$JAR_FILE" ubuntu@${BASTION_IP}:/tmp/ktb-chat-backend.jar
     
-    # 배포 및 재시작
-    ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no -o ProxyJump=ubuntu@${BASTION_IP} \
-        ubuntu@$IP << SCRIPT
+    # Bastion에서 Backend 인스턴스로 복사 및 배포
+    echo "📤 Deploying from Bastion to $IP..."
+    ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} << 'BASTION'
+set -e
+
+# Backend 인스턴스로 JAR 복사
+scp -o StrictHostKeyChecking=no /tmp/ktb-chat-backend.jar ubuntu@$IP:/tmp/
+
+# Backend 인스턴스에 접속하여 배포 및 재시작
+ssh -o StrictHostKeyChecking=no ubuntu@$IP << 'INNER'
 set -e
 
 # JAR 파일 이동
@@ -110,7 +117,11 @@ else
     echo "⚠️  Health check failed, but service is running"
     exit 0
 fi
-SCRIPT
+INNER
+
+# Bastion의 임시 파일 삭제
+rm -f /tmp/ktb-chat-backend.jar
+BASTION
     
     if [ $? -eq 0 ]; then
         echo "✅ Successfully deployed to $IP"
