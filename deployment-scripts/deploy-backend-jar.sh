@@ -112,15 +112,19 @@ sleep 15
 # Health check
 if curl -sf http://localhost:5001/api/health > /dev/null 2>&1; then
     echo "✅ Health check passed"
-    exit 0
 else
     echo "⚠️  Health check failed, but service is running"
-    exit 0
 fi
+
+# Always exit 0 from INNER script
+exit 0
 INNER
 
 # Bastion의 임시 파일 삭제
 rm -f /tmp/ktb-chat-backend.jar
+
+# Always exit 0 from BASTION script
+exit 0
 BASTION
     
     if [ $? -eq 0 ]; then
