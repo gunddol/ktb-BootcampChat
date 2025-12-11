@@ -125,9 +125,13 @@ public class FileController {
             @Parameter(description = "다운로드할 파일명") @PathVariable String filename,
             HttpServletRequest request,
             Principal principal) {
+        CustomUserDetails customUserDetails = (CustomUserDetails) principal;
+
         try {
-            User user = userRepository.findByEmail(principal.getName())
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+//            User user = userRepository.findByEmail(principal.getName())
+//                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+
+            User user = userService.getUserProfile(customUserDetails.getId());
 
             Resource resource = fileService.loadFileAsResource(filename, user.getId());
 
@@ -245,9 +249,13 @@ public class FileController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteFile(@PathVariable String id, Principal principal) {
+
+        CustomUserDetails  userEntity = (CustomUserDetails) principal;
         try {
-            User user = userRepository.findByEmail(principal.getName())
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+//            User user = userRepository.findByEmail(principal.getName())
+//                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+
+            User user = userService.getUserProfile(userEntity.getId());
 
             boolean deleted = fileService.deleteFile(id, user.getId());
 
