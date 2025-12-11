@@ -15,30 +15,35 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private final RateLimitInterceptor rateLimitInterceptor;
+  private final RateLimitInterceptor rateLimitInterceptor;
 
-    @Value("${file.upload-dir:./uploads}")
-    private String uploadDir;
+  @Value("${file.upload-dir:./uploads}")
+  private String uploadDir;
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(rateLimitInterceptor); // 변경금지
-    }
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(rateLimitInterceptor); // 변경금지
+  }
 
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path uploadsPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        String resourceLocation = uploadsPath.toUri().toString();
-        if (!resourceLocation.endsWith("/")) {
-            resourceLocation = resourceLocation + "/";
-        }
-        registry.addResourceHandler("/api/uploads/**")
-                .addResourceLocations(resourceLocation);
-    }
+  @Override
+  public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    // Disabled: /api/uploads/** is now handled by UploadsProxyController
+    // which redirects to S3 instead of serving from local filesystem
+    // This ensures compatibility with S3FileService
+    /*
+     * Path uploadsPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+     * String resourceLocation = uploadsPath.toUri().toString();
+     * if (!resourceLocation.endsWith("/")) {
+     * resourceLocation = resourceLocation + "/";
+     * }
+     * registry.addResourceHandler("/api/uploads/**")
+     * .addResourceLocations(resourceLocation);
+     */
+  }
 
-    @Override
-    public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addViewController("/favicon{path:[^\\.]*}")
-                .setStatusCode(HttpStatus.OK);
-    }
+  @Override
+  public void addViewControllers(ViewControllerRegistry registry) {
+    registry.addViewController("/favicon{path:[^\\.]*}")
+        .setStatusCode(HttpStatus.OK);
+  }
 }
