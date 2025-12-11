@@ -1,0 +1,108 @@
+name: Backend Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/backend/**'
+      - 'deployment-scripts/deploy-backend-jar.sh'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:  # 수동 실행 가능
+
+env:
+  AWS_REGION: ap-northeast-2
+  JAVA_VERSION: '21'
+
+jobs:
+  build-and-deploy:
+    name: jar 빌드 & ec2 배포
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+      
+      - name: JDK 21 설치
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: jar 빌드
+        working-directory: apps/backend
+        run: |
+          ./mvnw clean package -DskipTests
+          echo "JAR_FILE=$(ls target/*.jar | grep -v '.original')" >> $GITHUB_ENV
+      
+      - name: jar 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: apps/backend/target/*.jar
+          retention-days: 7
+      
+      - name: AWS credentials 설정
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: SSH key 설정
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ktb-015-key.pem
+          chmod 600 ~/.ssh/ktb-015-key.pem
+          ssh-keyscan -H ${{ secrets.BASTION_IP }} >> ~/.ssh/known_hosts
+      
+      - name: jar 백엔드 배포
+        env:
+          BASTION_IP: ${{ secrets.BASTION_IP }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          ENCRYPTION_SALT: ${{ secrets.ENCRYPTION_SALT }}
+        working-directory: deployment-scripts
+        run: |
+          chmod +x deploy-backend-jar.sh
+          ./deploy-backend-jar.sh ../apps/backend/target/ktb-chat-backend-0.0.1-SNAPSHOT.jar
+      
+      - name: EC2 배포 확인
+        env:
+          TARGET_GROUP_ARN: ${{ secrets.BACKEND_TARGET_GROUP_ARN }}
+        run: |
+          echo "Waiting for instances to become healthy..."
+          sleep 30
+          
+          aws elbv2 describe-target-health \
+            --target-group-arn $TARGET_GROUP_ARN \
+            --region $AWS_REGION \
+            --query 'TargetHealthDescriptions[*].[Target.Id,TargetHealth.State]' \
+            --output table
+          
+          UNHEALTHY=$(aws elbv2 describe-target-health \
+            --target-group-arn $TARGET_GROUP_ARN \
+            --region $AWS_REGION \
+            --query 'length(TargetHealthDescriptions[?TargetHealth.State!=`healthy`])' \
+            --output text)
+          
+          if [ "$UNHEALTHY" != "0" ]; then
+            echo "❌ $UNHEALTHY instances are unhealthy!"
+            exit 1
+          fi
+          
+          echo "✅ All instances are healthy!"
+      
+      - name: 배포 알림
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Backend deployment successful!"
+            echo "🔗 API: https://api.chat.goorm-ktb-015.goorm.team/api/health"
+          else
+            echo "❌ Backend deployment failed!"
+          fi
