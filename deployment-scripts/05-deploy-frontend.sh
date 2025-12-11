@@ -43,6 +43,9 @@ fi
 # 공통 배포 스크립트 실행
 source "$SCRIPT_DIR/deploy-frontend-common.sh"
 
+# 공통 스크립트의 main 함수 실행
+main
+
 echo ""
 echo "💡 Next steps (if first time):"
 echo "  1. Verify CloudFront distribution is configured"

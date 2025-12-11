@@ -4,7 +4,7 @@ const nextConfig = {
   transpilePackages: ['@vapor-ui/core', '@vapor-ui/icons'],
   output: 'export',
   images: { unoptimized: true },
-  trailingSlash: false,
+  trailingSlash: true,
   compress: true,
 };
 
