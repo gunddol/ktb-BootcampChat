@@ -9,6 +9,10 @@ import com.ktb.chatapp.util.FileUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +32,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final FileService fileService;
+    private final CacheManager cacheManager;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
@@ -43,6 +48,7 @@ public class UserService {
      * 현재 사용자 프로필 조회
      * @param email 사용자 이메일
      */
+    @Cacheable(value = "userProfileByEmail", key = "#email.toLowerCase()")
     public UserResponse getCurrentUserProfile(String email) {
         User user = userRepository.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
@@ -53,6 +59,7 @@ public class UserService {
      * 사용자 프로필 업데이트
      * @param email 사용자 이메일
      */
+    @CacheEvict(value = "userProfileByEmail", key = "#email.toLowerCase()")
     public UserResponse updateUserProfile(String email, UpdateProfileRequest request) {
         User user = userRepository.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
@@ -63,6 +70,8 @@ public class UserService {
 
         User updatedUser = userRepository.save(user);
         log.info("사용자 프로필 업데이트 완료 - ID: {}, Name: {}", user.getId(), request.getName());
+
+        evictUserCaches(user);
 
         return UserResponse.from(updatedUser);
     }
@@ -94,6 +103,8 @@ public class UserService {
 
         log.info("프로필 이미지 업로드 완료 - User ID: {}, File: {}", user.getId(), profileImageUrl);
 
+        evictUserCaches(user);
+
         return new ProfileImageResponse(
                 true,
                 "프로필 이미지가 업데이트되었습니다.",
@@ -104,11 +115,11 @@ public class UserService {
     /**
      * 특정 사용자 프로필 조회
      */
-    public UserResponse getUserProfile(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
+    @Cacheable(value = "userProfileById", key = "#userId")
+    public User getUserProfile(String userId) {
 
-        return UserResponse.from(user);
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
     }
 
     /**
@@ -178,6 +189,8 @@ public class UserService {
             userRepository.save(user);
             log.info("프로필 이미지 삭제 완료 - User ID: {}", user.getId());
         }
+
+        evictUserCaches(user);
     }
 
     /**
@@ -194,5 +207,23 @@ public class UserService {
 
         userRepository.delete(user);
         log.info("회원 탈퇴 완료 - User ID: {}", user.getId());
+
+        evictUserCaches(user);
+    }
+
+
+
+    private void evictUserCaches(User user) {
+        if (user == null) return;
+
+        Cache emailCache = cacheManager.getCache("userProfileByEmail");
+        Cache idCache = cacheManager.getCache("userProfileById");
+
+        if (emailCache != null && user.getEmail() != null) {
+            emailCache.evict(user.getEmail().toLowerCase());
+        }
+        if (idCache != null && user.getId() != null) {
+            idCache.evict(user.getId());
+        }
     }
 }

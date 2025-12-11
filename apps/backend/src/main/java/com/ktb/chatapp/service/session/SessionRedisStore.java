@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class SessionMongoStore implements SessionStore {
+public class SessionRedisStore implements SessionStore {
     
     private final SessionRepository sessionRepository;
     

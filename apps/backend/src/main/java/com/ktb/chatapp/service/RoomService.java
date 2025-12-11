@@ -29,7 +29,8 @@ import org.springframework.stereotype.Service;
 public class RoomService {
 
     private final RoomRepository roomRepository;
-    private final UserRepository userRepository;
+    //private final UserRepository userRepository;
+    private final UserService userService;
     private final MessageRepository messageRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
@@ -154,13 +155,13 @@ public class RoomService {
     }
 
     public Room createRoom(CreateRoomRequest createRoomRequest, String name) {
-        User creator = userRepository.findByEmail(name)
-            .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + name));
+        UserResponse creatorResponse = userService.getCurrentUserProfile(name);
+        String creatorId = creatorResponse.getId();
 
         Room room = new Room();
         room.setName(createRoomRequest.getName().trim());
-        room.setCreator(creator.getId());
-        room.getParticipantIds().add(creator.getId());
+        room.setCreator(creatorId);
+        room.getParticipantIds().add(creatorId);
 
         if (createRoomRequest.getPassword() != null && !createRoomRequest.getPassword().isEmpty()) {
             room.setHasPassword(true);
@@ -191,8 +192,8 @@ public class RoomService {
         }
 
         Room room = roomOpt.get();
-        User user = userRepository.findByEmail(name)
-            .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다: " + name));
+        UserResponse creatorResponse = userService.getCurrentUserProfile(name);
+        String creatorId = creatorResponse.getId();
 
         // 비밀번호 확인
         if (room.isHasPassword()) {
@@ -202,9 +203,9 @@ public class RoomService {
         }
 
         // 이미 참여중인지 확인
-        if (!room.getParticipantIds().contains(user.getId())) {
+        if (!room.getParticipantIds().contains(creatorId)) {
             // 채팅방 참여
-            room.getParticipantIds().add(user.getId());
+            room.getParticipantIds().add(creatorId);
             room = roomRepository.save(room);
         }
         
@@ -224,13 +225,13 @@ public class RoomService {
 
         User creator = null;
         if (room.getCreator() != null) {
-            creator = userRepository.findById(room.getCreator()).orElse(null);
+            creator = userService.getUserProfile(room.getCreator());
         }
 
         List<User> participants = room.getParticipantIds().stream()
-            .map(userRepository::findById)
-            .filter(Optional::isPresent)
-            .map(Optional::get)
+            .map(userService::getUserProfile)
+//            .filter(Optional::isPresent)
+//            .map(Optional::get)
             .toList();
 
         // 최근 10분간 메시지 수 조회

@@ -33,4 +33,5 @@ public interface SessionStore {
     void deleteAll(String userId);
     
     void delete(String userId, String sessionId);
+
 }

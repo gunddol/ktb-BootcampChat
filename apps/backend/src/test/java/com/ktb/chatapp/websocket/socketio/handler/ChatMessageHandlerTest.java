@@ -9,10 +9,7 @@ import com.ktb.chatapp.repository.FileRepository;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.RoomRepository;
 import com.ktb.chatapp.repository.UserRepository;
-import com.ktb.chatapp.service.RateLimitCheckResult;
-import com.ktb.chatapp.service.RateLimitService;
-import com.ktb.chatapp.service.SessionService;
-import com.ktb.chatapp.service.SessionValidationResult;
+import com.ktb.chatapp.service.*;
 import com.ktb.chatapp.util.BannedWordChecker;
 import com.ktb.chatapp.websocket.socketio.SocketUser;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -41,8 +38,10 @@ class ChatMessageHandlerTest {
   private MessageRepository messageRepository;
   @Mock
   private RoomRepository roomRepository;
+//  @Mock
+//  private UserRepository userRepository;
   @Mock
-  private UserRepository userRepository;
+  private UserService userService;
   @Mock
   private FileRepository fileRepository;
   @Mock
@@ -61,7 +60,7 @@ class ChatMessageHandlerTest {
         socketIOServer,
         messageRepository,
         roomRepository,
-        userRepository,
+        userService,
         fileRepository,
         sessionService,
         bannedWordChecker,
@@ -86,7 +85,8 @@ class ChatMessageHandlerTest {
 
     User user = new User();
     user.setId("user-1");
-    when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+//    when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+    when(userService.getUserProfile("user-1")).thenReturn(user);
 
     Room room = new Room();
     room.setId("room-1");
