@@ -18,7 +18,7 @@ Backend 배포는 3단계로 진행됩니다:
 # ------------------------------------------------------------------
 export BASTION_IP=52.79.105.90
 export MONGO_URI=mongodb://10.0.101.160:27017/ktb-chat
-export REDIS_HOST=localhost
+export REDIS_HOST=10.0.101.163
 export REDIS_PORT=6379
 export REDIS_PASSWORD=ktb-015
 export JWT_SECRET=78ba3b45fa8b7a3c50e34acbcd887f76ca387034712e152b7bb20bd82841067a

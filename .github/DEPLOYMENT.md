@@ -70,7 +70,7 @@ Settings → Secrets and variables → Actions → New repository secret
 값: mongodb://10.0.101.160:27017/ktb-chat
 
 이름: REDIS_HOST
-값: localhost
+값: 10.0.101.163
 
 이름: REDIS_PORT
 값: 6379
