@@ -1,14 +1,16 @@
 package com.ktb.chatapp.controller;
 
+import com.ktb.chatapp.dto.CompleteUploadRequest;
+import com.ktb.chatapp.dto.PresignedUrlRequest;
 import com.ktb.chatapp.dto.StandardResponse;
 import com.ktb.chatapp.model.File;
 import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.FileRepository;
-import com.ktb.chatapp.repository.UserRepository;
 import com.ktb.chatapp.security.CustomUserDetails;
 import com.ktb.chatapp.service.FileService;
 import com.ktb.chatapp.service.FileUploadResult;
 import com.ktb.chatapp.service.UserService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,13 +24,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -37,15 +37,26 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 
 @Tag(name = "파일 (Files)", description = "파일 업로드 및 다운로드 API")
 @Slf4j
-@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/files")
 public class FileController {
 
     private final FileService fileService;
     private final FileRepository fileRepository;
-    private final UserRepository userRepository;
     private final UserService userService;
+    
+    // Presigned URL 생성을 위해 S3FileService 직접 주입
+    private final com.ktb.chatapp.service.S3FileService s3FileService;
+
+    public FileController(FileService fileService,
+                         FileRepository fileRepository,
+                         UserService userService,
+                         com.ktb.chatapp.service.S3FileService s3FileService) {
+        this.fileService = fileService;
+        this.fileRepository = fileRepository;
+        this.userService = userService;
+        this.s3FileService = s3FileService;
+    }
 
     /**
      * 파일 업로드
@@ -227,6 +238,106 @@ public class FileController {
         } catch (Exception e) {
             log.error("파일 미리보기 중 에러 발생: {}", filename, e);
             return handleFileError(e);
+        }
+    }
+
+    /**
+     * Presigned URL 생성 (클라이언트 직접 S3 업로드용)
+     */
+    @Operation(summary = "Presigned URL 생성", description = "클라이언트가 직접 S3에 업로드할 수 있는 Presigned URL을 생성합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Presigned URL 생성 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청", content = @Content(schema = @Schema(implementation = StandardResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(schema = @Schema(implementation = StandardResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류", content = @Content(schema = @Schema(implementation = StandardResponse.class)))
+    })
+    @PostMapping("/upload/presigned")
+    public ResponseEntity<?> generatePresignedUrl(
+            @Valid @RequestBody PresignedUrlRequest request,
+            Principal principal) {
+        try {
+            String userId = getUserIdFromPrincipal(principal);
+            userService.getUserProfile(userId); // 사용자 인증 확인
+
+            // 파일 크기 검증
+            if (request.getFileSize() > 50 * 1024 * 1024) { // 50MB
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "파일 크기는 50MB를 초과할 수 없습니다.");
+                return ResponseEntity.status(400).body(errorResponse);
+            }
+
+            // Presigned URL 생성
+            String presignedUrl = s3FileService.generatePresignedUploadUrl(
+                request.getFilename(), request.getContentType(), request.getFileSize());
+            
+            // 안전한 파일명 생성 (서버에서 생성한 파일명 사용)
+            String safeFileName = com.ktb.chatapp.util.FileUtil.generateSafeFileName(request.getFilename());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("presignedUrl", presignedUrl);
+            response.put("filename", safeFileName);
+            response.put("expiresIn", 900); // 15분 (초 단위)
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Presigned URL 생성 중 에러 발생", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Presigned URL 생성 중 오류가 발생했습니다.");
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    /**
+     * Presigned URL 업로드 완료 콜백
+     */
+    @Operation(summary = "업로드 완료 콜백", description = "클라이언트가 Presigned URL로 S3에 업로드 완료 후 호출하는 엔드포인트입니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "파일 정보 저장 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청", content = @Content(schema = @Schema(implementation = StandardResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(schema = @Schema(implementation = StandardResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류", content = @Content(schema = @Schema(implementation = StandardResponse.class)))
+    })
+    @PostMapping("/upload/complete")
+    public ResponseEntity<?> completeUpload(
+            @Valid @RequestBody CompleteUploadRequest request,
+            Principal principal) {
+        try {
+            String userId = getUserIdFromPrincipal(principal);
+            User user = userService.getUserProfile(userId);
+
+            // 파일 메타데이터 저장
+            File savedFile = s3FileService.saveFileMetadata(
+                request.getFilename(), request.getOriginalFilename(), 
+                request.getContentType(), request.getFileSize(), user.getId());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "파일 업로드 완료");
+
+            Map<String, Object> fileData = new HashMap<>();
+            fileData.put("_id", savedFile.getId());
+            fileData.put("filename", savedFile.getFilename());
+            fileData.put("originalname", savedFile.getOriginalname());
+            fileData.put("mimetype", savedFile.getMimetype());
+            fileData.put("size", savedFile.getSize());
+            fileData.put("uploadDate", savedFile.getUploadDate());
+
+            response.put("file", fileData);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("업로드 완료 처리 중 에러 발생", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "업로드 완료 처리 중 오류가 발생했습니다.");
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 
