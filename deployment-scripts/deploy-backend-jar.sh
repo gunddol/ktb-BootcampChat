@@ -71,7 +71,7 @@ for IP in $BACKEND_IPS; do
     
     # Bastion에서 Backend 인스턴스로 복사 및 배포
     echo "📤 Deploying from Bastion to $IP..."
-    if ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} bash -s << BASTION
+    if ssh -T -i "$KEY_PATH" -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} bash -s << BASTION
 set -e
 
 # Backend 인스턴스로 JAR 복사
@@ -80,7 +80,7 @@ scp -o StrictHostKeyChecking=no /tmp/ktb-chat-backend.jar ubuntu@$IP:/tmp/
 
 # Backend 인스턴스에 접속하여 배포 및 재시작
 echo "Deploying to $IP..."
-ssh -o StrictHostKeyChecking=no ubuntu@$IP << 'INNER'
+ssh -T -o StrictHostKeyChecking=no ubuntu@$IP << 'INNER'
 set -e
 
 # JAR 파일 이동
@@ -104,7 +104,7 @@ ENVEOF
 # Service 재시작
 echo "🔄 Restarting service..."
 cd /opt/ktb-backend/ktb-BootcampChat/apps/backend
-bash app-control.sh restart
+bash app-control.sh restart || exit 1
 
 # 대기
 sleep 15
@@ -116,9 +116,15 @@ else
     echo "⚠️  Health check failed, but service is running"
 fi
 
-# Always exit 0 from INNER script
+# Explicitly exit 0
 exit 0
 INNER
+
+INNER_EXIT=\$?
+if [ \$INNER_EXIT -ne 0 ]; then
+    echo "❌ Inner SSH failed with exit code \$INNER_EXIT"
+    exit \$INNER_EXIT
+fi
 
 # Bastion의 임시 파일 삭제
 rm -f /tmp/ktb-chat-backend.jar
