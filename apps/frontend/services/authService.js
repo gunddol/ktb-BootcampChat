@@ -314,6 +314,18 @@ class AuthService {
 
       return response.data?.status === 'ok' || response.status === 200;
     } catch (error) {
+      // SSL 인증서 오류 처리 (조용히 실패 - 실제 API 호출은 여전히 작동할 수 있음)
+      if (error.code === 'ERR_CERT_COMMON_NAME_INVALID' || 
+          error.code === 'ERR_CERT_AUTHORITY_INVALID' ||
+          error.code === 'ERR_CERT_INVALID' ||
+          error.message?.includes('certificate') ||
+          error.message?.includes('CERT')) {
+        // 인증서 오류는 조용히 처리 (콘솔에 로그만 남기지 않음)
+        // 실제 API 호출은 여전히 작동할 수 있으므로 false를 반환하되 에러를 throw하지 않음
+        console.warn('SSL 인증서 검증 오류가 발생했습니다. API 서버의 SSL 인증서 설정을 확인해주세요.');
+        return false;
+      }
+
       // 네트워크 에러나 타임아웃은 더 구체적인 메시지 제공
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
         throw new Error('서버 응답 시간이 초과되었습니다.');
