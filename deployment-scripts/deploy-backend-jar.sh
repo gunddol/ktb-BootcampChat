@@ -104,7 +104,7 @@ ENVEOF
 # Service 재시작
 echo "🔄 Restarting service..."
 cd /opt/ktb-backend/ktb-BootcampChat/apps/backend
-./app-control.sh restart
+bash app-control.sh restart
 
 # 대기
 sleep 15
