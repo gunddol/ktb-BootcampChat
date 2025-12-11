@@ -2,7 +2,6 @@ package com.ktb.chatapp.repository;
 
 import com.ktb.chatapp.model.Session;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -11,34 +10,28 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-
 @Repository
 @RequiredArgsConstructor
 public class SessionRepository {
 
     private final RedisTemplate<String, Object> redisTemplate;
 
-
     private String sessionKey(String sessionId) {
         return "session:" + sessionId;
     }
+
     private String userKey(String userId) {
         return "user:" + userId;
     }
 
-
-
-
     public Session save(Session session) {
-
 
         String sessionKey = sessionKey(session.getSessionId());
         String userKey = userKey(session.getUserId());
 
-
-//        redisTemplate.opsForHash().putAll(sessionKey, session.toMap());
-//        //만료시 session 데이터 삭제
-//        redisTemplate.expire(sessionKey, Duration.ofMinutes(30));
+        // redisTemplate.opsForHash().putAll(sessionKey, session.toMap());
+        // //만료시 session 데이터 삭제
+        // redisTemplate.expire(sessionKey, Duration.ofMinutes(30));
 
         redisTemplate.opsForValue().set(sessionKey, session, Duration.ofMinutes(30));
 
@@ -53,7 +46,7 @@ public class SessionRepository {
         String userKey = userKey(userId);
         Set<Object> sessionIds = redisTemplate.opsForSet().members(userKey);
 
-        if (sessionIds == null|| sessionIds.isEmpty()) {
+        if (sessionIds == null || sessionIds.isEmpty()) {
             return Optional.empty();
         }
 
@@ -73,14 +66,13 @@ public class SessionRepository {
 
         return Optional.empty();
 
-
     }
 
-    //deleteall
+    // deleteall
     public void deleteByUserId(String userId) {
 
         Set<Object> sessionIds = redisTemplate.opsForSet().members(userKey(userId));
-        if(sessionIds != null && !sessionIds.isEmpty()) {
+        if (sessionIds != null && !sessionIds.isEmpty()) {
             for (Object obj : sessionIds) {
                 String sessionId = obj.toString();
                 String sessionKey = sessionKey(sessionId);
@@ -90,16 +82,13 @@ public class SessionRepository {
         redisTemplate.delete(userKey(userId));
     }
 
-    //session만 제거
+    // session만 제거
     public void delete(Session session) {
         String sessionId = session.getSessionId();
         String sessionKey = sessionKey(sessionId);
         String userKey = userKey(session.getUserId());
 
-
         redisTemplate.delete(sessionKey);
         redisTemplate.opsForSet().remove(userKey, sessionId);
     }
 }
-
-
