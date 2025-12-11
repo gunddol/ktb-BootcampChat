@@ -41,19 +41,31 @@ fi
 
 # Backend 인스턴스 IP 목록 가져오기
 echo "📋 Getting Backend instance IPs..."
+# 1) 우선 Name 패턴으로 검색 (backend-a-*, backend-b-*)
 BACKEND_IPS=$(aws ec2 describe-instances \
-    --filters "Name=tag:Type,Values=backend" "Name=instance-state-name,Values=running" \
-    --region $REGION \
+    --filters "Name=instance-state-name,Values=running" \
+              "Name=tag:Name,Values=backend-a-*,backend-b-*" \
+    --region "$REGION" \
     --query 'Reservations[].Instances[].PrivateIpAddress' \
     --output text)
 
+# 2) 없으면 이전 방식(Type=backend)으로 폴백
 if [ -z "$BACKEND_IPS" ]; then
-    echo "❌ No Backend instances found!"
+    BACKEND_IPS=$(aws ec2 describe-instances \
+        --filters "Name=tag:Type,Values=backend" "Name=instance-state-name,Values=running" \
+        --region "$REGION" \
+        --query 'Reservations[].Instances[].PrivateIpAddress' \
+        --output text)
+fi
+
+if [ -z "$BACKEND_IPS" ]; then
+    echo "❌ No Backend instances found! (Name=backend-a/b-* or Type=backend)"
     exit 1
 fi
 
 INSTANCE_COUNT=$(echo "$BACKEND_IPS" | wc -w)
 echo "✅ Found $INSTANCE_COUNT Backend instances"
+echo "IPs: $BACKEND_IPS"
 echo ""
 
 SUCCESS_COUNT=0
@@ -104,20 +116,35 @@ ENVEOF
 # Service 재시작
 echo "🔄 Restarting service..."
 cd /opt/ktb-backend/ktb-BootcampChat/apps/backend
-bash app-control.sh restart || exit 1
+bash app-control.sh restart || {
+    echo "⚠️  Restart command had issues, checking if service is running..."
+    bash app-control.sh status || true
+}
 
 # 대기
 sleep 15
 
 # Health check
+HEALTH_CHECK_PASSED=false
 if curl -sf http://localhost:5001/api/health > /dev/null 2>&1; then
     echo "✅ Health check passed"
+    HEALTH_CHECK_PASSED=true
 else
-    echo "⚠️  Health check failed, but service is running"
+    echo "⚠️  Health check failed, checking service status..."
+    bash app-control.sh status || true
+    # 서비스가 실행 중이면 성공으로 간주
+    if [ -f app.pid ] && ps -p \$(cat app.pid) > /dev/null 2>&1; then
+        echo "✅ Service is running (PID: \$(cat app.pid))"
+        HEALTH_CHECK_PASSED=true
+    fi
 fi
 
-# Explicitly exit 0
-exit 0
+if [ "\$HEALTH_CHECK_PASSED" = "true" ]; then
+    exit 0
+else
+    echo "❌ Deployment verification failed"
+    exit 1
+fi
 INNER
 
 INNER_EXIT=\$?

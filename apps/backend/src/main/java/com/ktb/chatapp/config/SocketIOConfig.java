@@ -34,11 +34,18 @@ public class SocketIOConfig {
   @Value("${socketio.server.port:5002}")
   private Integer port;
 
+  @Value("${spring.data.redis.host}")
+  private String redisHost;
+
+  @Value("${spring.data.redis.password}")
+  private String redisPassword;
+
   @Bean(destroyMethod = "shutdown")
   public RedissonClient redissonClient() {
     Config config = new Config();
     config.useSingleServer()
-        .setAddress("redis://" + host + ":6379");
+        .setAddress("redis://" + redisHost + ":6379")
+        .setPassword(redisPassword);
     return Redisson.create(config);
   }
 
