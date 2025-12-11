@@ -71,13 +71,15 @@ for IP in $BACKEND_IPS; do
     
     # Bastion에서 Backend 인스턴스로 복사 및 배포
     echo "📤 Deploying from Bastion to $IP..."
-    ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} << 'BASTION'
+    ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} bash -s << BASTION
 set -e
 
 # Backend 인스턴스로 JAR 복사
+echo "Copying JAR to $IP..."
 scp -o StrictHostKeyChecking=no /tmp/ktb-chat-backend.jar ubuntu@$IP:/tmp/
 
 # Backend 인스턴스에 접속하여 배포 및 재시작
+echo "Deploying to $IP..."
 ssh -o StrictHostKeyChecking=no ubuntu@$IP << 'INNER'
 set -e
 
