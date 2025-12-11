@@ -71,7 +71,7 @@ for IP in $BACKEND_IPS; do
     
     # Bastion에서 Backend 인스턴스로 복사 및 배포
     echo "📤 Deploying from Bastion to $IP..."
-    ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} bash -s << BASTION
+    if ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no ubuntu@${BASTION_IP} bash -s << BASTION
 set -e
 
 # Backend 인스턴스로 JAR 복사
@@ -126,8 +126,7 @@ rm -f /tmp/ktb-chat-backend.jar
 # Always exit 0 from BASTION script
 exit 0
 BASTION
-    
-    if [ $? -eq 0 ]; then
+    then
         echo "✅ Successfully deployed to $IP"
         ((SUCCESS_COUNT++))
     else
