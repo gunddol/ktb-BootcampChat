@@ -70,6 +70,7 @@ jobs:
         env:
           S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
         working-directory: apps/frontend
+        if: false
         run: |
           # Upload all files with long cache
           aws s3 sync out/ s3://$S3_BUCKET/ \
