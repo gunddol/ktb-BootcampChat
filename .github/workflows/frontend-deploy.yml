@@ -36,7 +36,7 @@ jobs:
         run: |
           cat > .env.production << EOF
           NEXT_PUBLIC_API_URL=https://api.chat.goorm-ktb-015.goorm.team
-          NEXT_PUBLIC_SOCKET_URL=https://api.chat.goorm-015.goorm.team
+          NEXT_PUBLIC_SOCKET_URL=https://api.chat.goorm-ktb-015.goorm.team
           NODE_ENV=production
           EOF
       
