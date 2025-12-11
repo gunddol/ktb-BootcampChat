@@ -13,6 +13,8 @@ import com.ktb.chatapp.service.MessageReadStatusService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.IntStream;
+
+import com.ktb.chatapp.service.UserService;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +45,12 @@ class MessageLoaderIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+
+//    @Autowired
+//    private UserService userService;
+
+
+
     @Autowired
     private FileRepository fileRepository;
 
@@ -64,6 +72,7 @@ class MessageLoaderIntegrationTest {
         messageLoader = new MessageLoader(
                 messageRepository,
                 userRepository,
+//                userService,
                 new MessageResponseMapper(fileRepository),
                 messageReadStatusService
         );

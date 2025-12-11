@@ -8,6 +8,7 @@ import com.ktb.chatapp.repository.FileRepository;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.UserRepository;
 import com.ktb.chatapp.service.MessageReadStatusService;
+import com.ktb.chatapp.service.UserService;
 import net.datafaker.Faker;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,9 @@ class MessageLoaderTest {
     
     @Mock
     private UserRepository userRepository;
+
+//    @Mock
+//    private UserService userService;
     
     @Mock
     private FileRepository fileRepository;
@@ -60,6 +64,7 @@ class MessageLoaderTest {
         messageLoader = new MessageLoader(
                 messageRepository,
                 userRepository,
+//                userService,
                 new MessageResponseMapper(fileRepository),
                 messageReadStatusService
         );
@@ -81,6 +86,7 @@ class MessageLoaderTest {
         
         lenient().when(userRepository.findAllById(anySet()))
                 .thenReturn(List.of(testUser));
+//        lenient().when(userService.getUserProfile(anyString())).thenReturn(testUser);
         lenient().doNothing().when(messageReadStatusService).updateReadStatus(anyList(), anyString());
     }
     

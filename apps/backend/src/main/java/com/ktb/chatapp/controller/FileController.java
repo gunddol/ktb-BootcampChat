@@ -5,8 +5,10 @@ import com.ktb.chatapp.model.File;
 import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.FileRepository;
 import com.ktb.chatapp.repository.UserRepository;
+import com.ktb.chatapp.security.CustomUserDetails;
 import com.ktb.chatapp.service.FileService;
 import com.ktb.chatapp.service.FileUploadResult;
+import com.ktb.chatapp.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -40,6 +42,7 @@ public class FileController {
     private final FileService fileService;
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
 
     /**
      * 파일 업로드
@@ -60,9 +63,12 @@ public class FileController {
     public ResponseEntity<?> uploadFile(
             @Parameter(description = "업로드할 파일") @RequestParam("file") MultipartFile file,
             Principal principal) {
+        CustomUserDetails customUserDetails = (CustomUserDetails) principal;
         try {
-            User user = userRepository.findByEmail(principal.getName())
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+//            User user = userRepository.findByEmail(principal.getName())
+//                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+
+            User user = userService.getUserProfile(customUserDetails.getId());
 
             FileUploadResult result = fileService.uploadFile(file, user.getId());
 
@@ -192,9 +198,12 @@ public class FileController {
             @PathVariable String filename,
             HttpServletRequest request,
             Principal principal) {
+
+        CustomUserDetails  userEntity = (CustomUserDetails) principal;
         try {
-            User user = userRepository.findByEmail(principal.getName())
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+//            User user = userRepository.findByEmail(principal.getName())
+//                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + principal.getName()));
+            User user = userService.getUserProfile(userEntity.getId());
 
             Resource resource = fileService.loadFileAsResource(filename, user.getId());
 

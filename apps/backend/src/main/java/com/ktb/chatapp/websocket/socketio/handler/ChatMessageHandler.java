@@ -37,10 +37,11 @@ public class ChatMessageHandler {
   private final SocketIOServer socketIOServer;
   private final MessageRepository messageRepository;
   private final RoomRepository roomRepository;
-  private final UserRepository userRepository;
+//  private final UserRepository userRepository;
+  private final UserService userService;
   private final FileRepository fileRepository;
   private final SessionService sessionService;
-  private final UserService userService;
+//  private final UserService userService;
   private final BannedWordChecker bannedWordChecker;
   private final RateLimitService rateLimitService;
   private final MeterRegistry meterRegistry;

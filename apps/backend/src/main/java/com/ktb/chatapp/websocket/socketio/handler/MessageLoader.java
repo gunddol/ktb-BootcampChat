@@ -8,6 +8,7 @@ import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.UserRepository;
 import com.ktb.chatapp.service.MessageReadStatusService;
+import com.ktb.chatapp.service.UserService;
 import jakarta.annotation.Nullable;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +30,7 @@ public class MessageLoader {
 
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
+//    private final UserService userService;
     private final MessageResponseMapper messageResponseMapper;
     private final MessageReadStatusService messageReadStatusService;
 
@@ -98,5 +100,6 @@ public class MessageLoader {
         //Todo: 확인하기
         return userRepository.findById(id)
                 .orElse(null);
+//        return userService.getUserProfile(id);
     }
 }
