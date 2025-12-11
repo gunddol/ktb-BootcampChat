@@ -1,32 +1,55 @@
-# ktb-chat
+# KTB BootcampChat
 
-NextJS와 Spring Boot 기반 채팅 애플리케이션 모노레포입니다.
+> Next.js + Spring Boot 실시간 채팅 애플리케이션
 
-## 주요 기능
+## 🔗 서비스 URL
 
-### 인증 및 사용자 관리
-- 이메일 기반의 사용자 인증 시스템
+- **Frontend**: https://chat.goorm-ktb-015.goorm.team
+- **Backend API**: https://api.chat.goorm-ktb-015.goorm.team
+- **Health Check**: https://api.chat.goorm-ktb-015.goorm.team/api/health
 
-### 채팅 기능
-- 실시간 채팅 (Socket.IO)
-- 이모지 리액션
-- 멘션 기능 (@사용자)
-- 메시지 읽음 상태 표시
-- 파일 첨부 및 공유 기능
+## 📚 문서
 
-### 채팅방 관리
-- 채팅방 생성
-- 실시간 참여자 상태 표시
+- **[운영 가이드](OPERATIONS.md)** - 프로덕션 운영 및 트러블슈팅
+- **[Backend README](apps/backend/README.md)** - Backend 개발 가이드
+- **[Frontend README](apps/frontend/README.md)** - Frontend 개발 가이드
 
-### 파일 처리
-- 이미지, PDF 파일 형식 지원
-- 이미지 미리보기 기능
-- 안전한 파일 업로드 및 다운로드
-- 파일 형식별 크기 제한 (1MB)
+## 🛠️ 기술 스택
 
-## 개발 서버 실행
+### Frontend
+- Next.js 15.1.9
+- React 18.3.1
+- Tailwind CSS 4.0
+- Socket.IO Client
 
-1. 루트에서 `npm install`로 의존성을 설치합니다. (`concurrently`가 포함되어야 합니다)
-2. 루트에서 `npm run dev`를 실행하면 자동으로 다음이 동시에 구동됩니다:
-    - `apps/frontend` 디렉터리에서 `npm run dev`
-    - `apps/backend` 디렉터리에서 `make dev`
+### Backend
+- Spring Boot 3.5.7
+- Java 21
+- MongoDB 8.x
+- Redis
+- Netty Socket.IO 2.0.13
+
+## 🚀 주요 스크립트
+
+```bash
+# 배포 상태 확인
+./deployment-scripts/99-check-deployment.sh
+
+# Backend 업데이트
+./deployment-scripts/fix-all-backends.sh
+
+# Frontend 배포
+./deployment-scripts/05-deploy-frontend.sh
+```
+
+## 📝 인프라
+
+- **Backend**: 12 x t3.small
+- **MongoDB**: 2 x t3.small (Primary + Backup)
+- **Redis**: 3 x t3.small (Master + 2 Replicas)
+- **Frontend**: S3 + CloudFront
+- **Load Balancer**: ALB (Application Load Balancer)
+
+## 📞 긴급 지원
+
+시스템 장애 시 [OPERATIONS.md](OPERATIONS.md)의 트러블슈팅 섹션 참조
