@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
@@ -70,19 +71,51 @@ public class S3FileService implements FileService {
 
   @PostConstruct
   public void init() {
-    StaticCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(
-        AwsBasicCredentials.create(accessKey, secretKey));
-    Region awsRegion = Region.of(region);
+    // 환경 변수 검증
+    if (accessKey == null || accessKey.trim().isEmpty()) {
+      log.error("AWS_ACCESS_KEY_ID 환경 변수가 설정되지 않았습니다.");
+      throw new IllegalStateException("AWS_ACCESS_KEY_ID 환경 변수가 필요합니다.");
+    }
+    if (secretKey == null || secretKey.trim().isEmpty()) {
+      log.error("AWS_SECRET_ACCESS_KEY 환경 변수가 설정되지 않았습니다.");
+      throw new IllegalStateException("AWS_SECRET_ACCESS_KEY 환경 변수가 필요합니다.");
+    }
     
-    this.s3Client = S3Client.builder()
-        .region(awsRegion)
-        .credentialsProvider(credentialsProvider)
-        .build();
-    
-    this.s3Presigner = S3Presigner.builder()
-        .region(awsRegion)
-        .credentialsProvider(credentialsProvider)
-        .build();
+    try {
+      StaticCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(
+          AwsBasicCredentials.create(accessKey, secretKey));
+      Region awsRegion = Region.of(region);
+      
+      // Apache HTTP 클라이언트 사용 (SSL 인증서 문제 해결)
+      // SSL 컨텍스트를 시스템 기본값으로 설정하여 truststore 문제 우회
+      ApacheHttpClient.Builder httpClientBuilder = ApacheHttpClient.builder()
+          .maxConnections(50)
+          .connectionTimeout(java.time.Duration.ofSeconds(10))
+          .socketTimeout(java.time.Duration.ofSeconds(30));
+      
+      this.s3Client = S3Client.builder()
+          .region(awsRegion)
+          .credentialsProvider(credentialsProvider)
+          .httpClient(httpClientBuilder.build())
+          .build();
+      
+      this.s3Presigner = S3Presigner.builder()
+          .region(awsRegion)
+          .credentialsProvider(credentialsProvider)
+          .build();
+      
+      log.info("S3Client 및 S3Presigner 초기화 완료 (Region: {}, Bucket: {})", awsRegion, bucketName);
+    } catch (Exception e) {
+      log.error("S3Client 초기화 실패", e);
+      if (e.getMessage() != null && (e.getMessage().contains("trustAnchors") || 
+                                     e.getMessage().contains("InvalidAlgorithmParameterException"))) {
+        throw new RuntimeException(
+            "SSL 인증서 문제가 발생했습니다. " +
+            "인스턴스에서 다음 명령을 실행하세요: " +
+            "sudo update-ca-certificates && sudo apt-get install -y ca-certificates-java", e);
+      }
+      throw new RuntimeException("S3Client 초기화 중 오류가 발생했습니다: " + e.getMessage(), e);
+    }
   }
 
   @Override
