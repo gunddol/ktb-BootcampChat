@@ -7,6 +7,7 @@ import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.UserRepository;
 import com.ktb.chatapp.service.RoomService;
+import com.ktb.chatapp.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -41,6 +42,7 @@ public class RoomController {
     private final UserRepository userRepository;
     private final MessageRepository messageRepository;
     private final RoomService roomService;
+    private final UserService userService;
 
     @Value("${spring.profiles.active:production}")
     private String activeProfile;
@@ -281,21 +283,24 @@ public class RoomController {
         }
     }
 
+    //Todo: getUSerProfile
     private RoomResponse mapToRoomResponse(Room room, String name) {
-        User creator = userRepository.findById(room.getCreator()).orElse(null);
+//        User creator = userRepository.findById(room.getCreator()).orElse(null);
+        User creator = userService.getUserProfile(room.getCreator());
         if (creator == null) {
             throw new RuntimeException("Creator not found for room " + room.getId());
         }
         UserResponse creatorSummary = UserResponse.from(creator);
         List<UserResponse> participantSummaries = room.getParticipantIds()
                 .stream()
-                .map(userRepository::findById).peek(optUser -> {
-                    if (optUser.isEmpty()) {
-                        log.warn("Participant not found: roomId={}, userId={}", room.getId(), optUser);
-                    }
-                })
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+//                .map(userRepository::findById).peek(optUser -> {
+//                    if (optUser.isEmpty()) {
+//                        log.warn("Participant not found: roomId={}, userId={}", room.getId(), optUser);
+//                    }
+//                })
+//                .filter(Optional::isPresent)
+//                .map(Optional::get)
+                .map(userService::getUserProfile)
                 .map(UserResponse::from)
                 .toList();
 

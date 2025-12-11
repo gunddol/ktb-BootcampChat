@@ -93,6 +93,7 @@ public class AuthController {
         if (errors != null) return errors;
         
         // Check existing user
+        // Todo: existEmail 구현
         if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(StandardResponse.error("이미 등록된 이메일입니다."));
@@ -297,7 +298,9 @@ public class AuthController {
 
             // 토큰에서 사용자 정보 추출
             String userId = jwtService.extractUserId(token);
-            
+
+
+            //Todo: existId 구현
             Optional<User> userOpt = userRepository.findById(userId);
 
             if (userOpt.isEmpty()) {
@@ -349,7 +352,9 @@ public class AuthController {
 
             // 만료된 토큰이라도 사용자 정보는 추출 가능
             String userId = jwtService.extractUserIdFromExpiredToken(token);
-            
+
+
+            //Todo: existId
             Optional<User> userOpt = userRepository.findById(userId);
 
             if (userOpt.isEmpty()) {
