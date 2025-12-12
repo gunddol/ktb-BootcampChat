@@ -35,11 +35,11 @@ class ChatMessageHandlerTest {
   @Mock
   private SocketIOServer socketIOServer;
   @Mock
-  private MessageRepository messageRepository;
+  private RedisMessageService redisMessageService;
   @Mock
   private RoomRepository roomRepository;
-//  @Mock
-//  private UserRepository userRepository;
+  // @Mock
+  // private UserRepository userRepository;
   @Mock
   private UserService userService;
   @Mock
@@ -58,7 +58,7 @@ class ChatMessageHandlerTest {
   void setUp() {
     handler = new ChatMessageHandler(
         socketIOServer,
-        messageRepository,
+        redisMessageService,
         roomRepository,
         userService,
         fileRepository,
@@ -85,7 +85,7 @@ class ChatMessageHandlerTest {
 
     User user = new User();
     user.setId("user-1");
-//    when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+    // when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
     when(userService.getUserProfile("user-1")).thenReturn(user);
 
     Room room = new Room();
@@ -107,7 +107,7 @@ class ChatMessageHandlerTest {
     verify(client).sendEvent(eq(ERROR), payloadCaptor.capture());
     Map<String, String> payload = payloadCaptor.getValue();
     org.junit.jupiter.api.Assertions.assertEquals("MESSAGE_REJECTED", payload.get("code"));
-    verifyNoInteractions(messageRepository);
+    verifyNoInteractions(redisMessageService);
     verify(socketIOServer, never()).getRoomOperations(any());
   }
 }
