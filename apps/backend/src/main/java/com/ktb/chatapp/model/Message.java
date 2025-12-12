@@ -39,7 +39,6 @@ public class Message {
   private String id;
 
   // Mongo 문서 필드명 "room" 사용
-  @Indexed
   @Field("room")
   private String roomId;
 
@@ -54,6 +53,7 @@ public class Message {
 
   // Mongo 문서 필드명 "file" 사용
   @Field("file")
+  @Indexed
   private String fileId;
 
   @CreatedDate
@@ -70,7 +70,6 @@ public class Message {
   @Builder.Default
   private Map<String, Object> metadata = new HashMap<>();
 
-  @Indexed
   @Builder.Default
   private Boolean isDeleted = false;
 
