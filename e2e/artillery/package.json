@@ -4,7 +4,8 @@
     "description": "Artillery load testing with Playwright",
     "scripts": {},
     "dependencies": {
-        "artillery": "^2.0.25"
+        "artillery": "^2.0.25",
+        "web-file-polyfill": "^1.0.4"
     },
     "devDependencies": {
         "@playwright/test": "^1.56.1"

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "e2e": "^0.0.8",
-    "playwright": "^1.57.0"
+    "playwright": "^1.57.0",
+    "redis": "^5.10.0"
   }
 }
