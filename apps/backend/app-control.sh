@@ -22,8 +22,8 @@ HEALTH_CHECK_URL="http://localhost:5001/api/health"
 HEALTH_CHECK_TIMEOUT=60  # seconds
 HEALTH_CHECK_INTERVAL=2  # seconds
 
-# JVM Options
-JVM_OPTS="${JVM_OPTS:--Xmx1024m -Xms512m}"
+# JVM Options - Optimized for Load Testing
+JVM_OPTS="${JVM_OPTS:--Xmx2048m -Xms1024m}"
 
 # Spring Profile
 SPRING_PROFILE="${SPRING_PROFILE:-prod}"
