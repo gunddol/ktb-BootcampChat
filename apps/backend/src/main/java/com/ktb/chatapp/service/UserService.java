@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -41,11 +41,11 @@ public class UserService {
     private long maxProfileImageSize;
 
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList(
-            "jpg", "jpeg", "png", "gif", "webp"
-    );
+            "jpg", "jpeg", "png", "gif", "webp");
 
     /**
      * 현재 사용자 프로필 조회
+     * 
      * @param email 사용자 이메일
      */
     @Cacheable(value = "userProfileByEmail", key = "#email.toLowerCase()")
@@ -57,9 +57,15 @@ public class UserService {
 
     /**
      * 사용자 프로필 업데이트
+     * 
      * @param email 사용자 이메일
      */
-    @CacheEvict(value = "userProfileByEmail", key = "#email.toLowerCase()")
+    /**
+     * 사용자 프로필 업데이트
+     * 
+     * @param email 사용자 이메일
+     */
+    @CachePut(value = "userProfileByEmail", key = "#email.toLowerCase()")
     public UserResponse updateUserProfile(String email, UpdateProfileRequest request) {
         User user = userRepository.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다."));
@@ -71,13 +77,18 @@ public class UserService {
         User updatedUser = userRepository.save(user);
         log.info("사용자 프로필 업데이트 완료 - ID: {}, Name: {}", user.getId(), request.getName());
 
-        evictUserCaches(user);
+        // userProfileById 캐시는 수동 업데이트 (Cache Put 전략)
+        Cache idCache = cacheManager.getCache("userProfileById");
+        if (idCache != null) {
+            idCache.put(user.getId(), updatedUser);
+        }
 
         return UserResponse.from(updatedUser);
     }
 
     /**
      * 프로필 이미지 업로드
+     * 
      * @param email 사용자 이메일
      */
     public ProfileImageResponse uploadProfileImage(String email, MultipartFile file) {
@@ -108,8 +119,7 @@ public class UserService {
         return new ProfileImageResponse(
                 true,
                 "프로필 이미지가 업데이트되었습니다.",
-                profileImageUrl
-        );
+                profileImageUrl);
     }
 
     /**
@@ -176,6 +186,7 @@ public class UserService {
 
     /**
      * 프로필 이미지 삭제
+     * 
      * @param email 사용자 이메일
      */
     public void deleteProfileImage(String email) {
@@ -195,6 +206,7 @@ public class UserService {
 
     /**
      * 회원 탈퇴 처리
+     * 
      * @param email 사용자 이메일
      */
     public void deleteUserAccount(String email) {
@@ -211,10 +223,9 @@ public class UserService {
         evictUserCaches(user);
     }
 
-
-
     private void evictUserCaches(User user) {
-        if (user == null) return;
+        if (user == null)
+            return;
 
         Cache emailCache = cacheManager.getCache("userProfileByEmail");
         Cache idCache = cacheManager.getCache("userProfileById");
