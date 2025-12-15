@@ -40,12 +40,69 @@ public class SocketIOConfig {
   @Value("${spring.data.redis.password}")
   private String redisPassword;
 
+  @Value("${spring.data.redis.replicas:}")
+  private String redisReplicas; // 예: "10.0.101.164:6379,10.0.101.11:6379"
+
   @Bean(destroyMethod = "shutdown")
   public RedissonClient redissonClient() {
     Config config = new Config();
-    config.useSingleServer()
-        .setAddress("redis://" + redisHost + ":6379")
-        .setPassword(redisPassword);
+    
+    // Master-Slave 모드로 변경하여 Replica 활용 및 자동 Failover
+    if (redisReplicas != null && !redisReplicas.isEmpty()) {
+      // Master-Slave 모드: 읽기 분산 및 자동 Failover
+      String masterAddress = "redis://" + redisHost + ":6379";
+      String[] replicaList = redisReplicas.split(",");
+      
+      // Replica 주소를 "redis://" 형식으로 변환
+      String[] replicaAddresses = new String[replicaList.length];
+      for (int i = 0; i < replicaList.length; i++) {
+        String replica = replicaList[i].trim();
+        if (!replica.startsWith("redis://")) {
+          replicaAddresses[i] = "redis://" + replica;
+        } else {
+          replicaAddresses[i] = replica;
+        }
+      }
+      
+      var masterSlaveConfig = config.useMasterSlaveServers()
+          .setMasterAddress(masterAddress)
+          .setPassword(redisPassword)
+          .setMasterConnectionPoolSize(10)  // Master 연결 풀
+          .setMasterConnectionMinimumIdleSize(5)
+          .setSlaveConnectionPoolSize(10)   // 각 Replica 연결 풀
+          .setSlaveConnectionMinimumIdleSize(5);
+      
+      // Replica 주소 추가
+      for (String replicaAddr : replicaAddresses) {
+        masterSlaveConfig.addSlaveAddress(replicaAddr);
+      }
+      
+      masterSlaveConfig
+          .setReadMode(org.redisson.config.ReadMode.SLAVE)  // 읽기는 Replica에서
+          .setRetryAttempts(3)
+          .setRetryInterval(1500)
+          .setTimeout(3000)
+          .setConnectTimeout(10000)
+          .setFailedSlaveReconnectionInterval(5000)
+          .setFailedSlaveCheckInterval(180000);  // 3분마다 실패한 Replica 체크
+      
+      log.info("Redisson configured in Master-Slave mode: Master={}, Replicas={}", 
+          masterAddress, String.join(", ", replicaAddresses));
+    } else {
+      // Fallback: Single Server 모드 (Replica 정보가 없을 때)
+      config.useSingleServer()
+          .setAddress("redis://" + redisHost + ":6379")
+          .setPassword(redisPassword)
+          .setConnectionPoolSize(10)
+          .setConnectionMinimumIdleSize(5)
+          .setRetryAttempts(3)
+          .setRetryInterval(1500)
+          .setTimeout(3000)
+          .setConnectTimeout(10000);
+      
+      log.info("Redisson configured in Single Server mode: {}", redisHost);
+    }
+    
     return Redisson.create(config);
   }
 

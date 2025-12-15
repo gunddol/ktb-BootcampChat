@@ -34,4 +34,15 @@ public interface RoomRepository extends MongoRepository<Room, String> {
     @Query("{'_id': ?0}")
     @Update("{'$pull': {'participantIds': ?1}}")
     void removeParticipant(String roomId, String userId);
+
+    /**
+     * 방 존재 여부 및 참여자 확인 (경량화된 권한 체크)
+     * 전체 Room 객체를 로딩하지 않고 boolean만 반환하여 메모리와 DB I/O 절약
+     * 
+     * @param id            방 ID
+     * @param participantId 참여자 ID
+     * @return 방이 존재하고 사용자가 참여자인 경우 true
+     */
+    boolean existsByIdAndParticipantIdsContains(String id, String participantId);
+
 }
