@@ -8,6 +8,7 @@ import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.UserRepository;
 import com.ktb.chatapp.service.MessageReadStatusService;
+import com.ktb.chatapp.service.RedisMessageService;
 import com.ktb.chatapp.service.UserService;
 import jakarta.annotation.Nullable;
 import java.time.LocalDateTime;
@@ -28,9 +29,9 @@ import static java.util.Collections.emptyList;
 @RequiredArgsConstructor
 public class MessageLoader {
 
-    private final MessageRepository messageRepository;
+    private final RedisMessageService redisMessageService;
     private final UserRepository userRepository;
-//    private final UserService userService;
+    // private final UserService userService;
     private final MessageResponseMapper messageResponseMapper;
     private final MessageReadStatusService messageReadStatusService;
 
@@ -41,7 +42,8 @@ public class MessageLoader {
      */
     public FetchMessagesResponse loadMessages(FetchMessagesRequest data, String userId) {
         try {
-            return loadMessagesInternal(data.roomId(), data.limit(BATCH_SIZE), data.before(LocalDateTime.now()), userId);
+            return loadMessagesInternal(data.roomId(), data.limit(BATCH_SIZE), data.before(LocalDateTime.now()),
+                    userId);
         } catch (Exception e) {
             log.error("Error loading initial messages for room {}", data.roomId(), e);
             return FetchMessagesResponse.builder()
@@ -58,17 +60,17 @@ public class MessageLoader {
             String userId) {
         Pageable pageable = PageRequest.of(0, limit, Sort.by("timestamp").descending());
 
-        Page<Message> messagePage = messageRepository
-                .findByRoomIdAndIsDeletedAndTimestampBefore(roomId, false, before, pageable);
+        Page<Message> messagePage = redisMessageService
+                .findByRoomId(roomId, pageable);
 
         List<Message> messages = messagePage.getContent();
 
         // DESC로 조회했으므로 ASC로 재정렬 (채팅 UI 표시 순서)
         List<Message> sortedMessages = messages.reversed();
-        
+
         var messageIds = sortedMessages.stream().map(Message::getId).toList();
         messageReadStatusService.updateReadStatus(messageIds, userId);
-        
+
         // 메시지 응답 생성
         List<MessageResponse> messageResponses = sortedMessages.stream()
                 .map(message -> {
@@ -97,9 +99,9 @@ public class MessageLoader {
             return null;
         }
 
-        //Todo: 확인하기
+        // Todo: 확인하기
         return userRepository.findById(id)
                 .orElse(null);
-//        return userService.getUserProfile(id);
+        // return userService.getUserProfile(id);
     }
 }
