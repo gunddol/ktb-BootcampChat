@@ -21,6 +21,7 @@ public class FileResponse {
     private String mimetype;
     private long size;
     private String user;
+    private String url;
     private LocalDateTime uploadDate;
 
     // File 엔티티에서 FileResponse로 변환하는 정적 메서드
@@ -32,6 +33,7 @@ public class FileResponse {
                 .mimetype(file.getMimetype())
                 .size(file.getSize())
                 .user(file.getUser())
+                .url("/api/files/view/" + file.getFilename())
                 .uploadDate(file.getUploadDate())
                 .build();
     }
