@@ -31,7 +31,7 @@ import org.springframework.stereotype.Service;
 public class RoomService {
 
     private final RoomRepository roomRepository;
-    //private final UserRepository userRepository;
+    private final UserRepository userRepository;
     private final UserService userService;
     private final MessageRepository messageRepository;
     private final PasswordEncoder passwordEncoder;
@@ -194,8 +194,8 @@ public class RoomService {
 
         Room room = new Room();
         room.setName(createRoomRequest.getName().trim());
-        room.setCreator(creatorId);
-        room.getParticipantIds().add(creatorId);
+        room.setCreator(creator.getId());
+        room.getParticipantIds().add(creator.getId());
 
         if (createRoomRequest.getPassword() != null && !createRoomRequest.getPassword().isEmpty()) {
             room.setHasPassword(true);
@@ -237,9 +237,9 @@ public class RoomService {
         }
 
         // 이미 참여중인지 확인
-        if (!room.getParticipantIds().contains(creatorId)) {
+        if (!room.getParticipantIds().contains(user.getId())) {
             // 채팅방 참여
-            room.getParticipantIds().add(creatorId);
+            room.getParticipantIds().add(user.getId());
             room = roomRepository.save(room);
         }
 
