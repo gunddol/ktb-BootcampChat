@@ -13,17 +13,17 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "rate_limits")
+//@Document(collection = "rate_limits")
 public class RateLimit {
 
     @Id
     private String id;
 
-    @Indexed(unique = true)
+//    @Indexed(unique = true)
     private String clientId;
 
     private int count;
 
-    @Indexed(expireAfter = "0s")
+//    @Indexed(expireAfter = "0s")
     private Instant expiresAt;
 }

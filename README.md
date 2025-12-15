@@ -33,7 +33,7 @@
 
 ```bash
 # 배포 상태 확인
-./deployment-scripts/99-check-deployment.sh
+./deployment-scripts/deploy-checking.sh
 
 # Backend 업데이트
 ./deployment-scripts/fix-all-backends.sh

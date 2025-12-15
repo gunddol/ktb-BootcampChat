@@ -77,7 +77,7 @@ fi
 
 # Redis
 REDIS_COUNT=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=ktb-redis-*" "Name=instance-state-name,Values=running" \
+    --filters "Name=tag:Name,Values=redis-*" "Name=instance-state-name,Values=running" \
     --query 'length(Reservations[].Instances[])' \
     --output text 2>/dev/null || echo 0)
 
@@ -175,7 +175,7 @@ echo ""
 echo "🎨 7. Frontend (S3 + CloudFront)"
 echo "----------------------------"
 
-BUCKET_NAME="${BUCKET_NAME:-ktb-015-chat-frontend}"
+BUCKET_NAME="${BUCKET_NAME:-chat.goorm-ktb-015.goorm.team}"
 BUCKET_EXISTS=$(aws s3 ls s3://$BUCKET_NAME 2>&1 || true)
 
 if [[ $BUCKET_EXISTS != *"NoSuchBucket"* ]] && [[ $BUCKET_EXISTS != *"does not exist"* ]]; then
@@ -203,7 +203,7 @@ echo "🌐 8. DNS (Route 53)"
 echo "----------------------------"
 
 # Frontend DNS
-FRONTEND_DNS=$(dig +short chat.$DOMAIN 2>/dev/null | head -1 || echo "")
+FRONTEND_DNS=$(dig +short $DOMAIN 2>/dev/null | head -1 || echo "")
 if [ -n "$FRONTEND_DNS" ]; then
     echo -e "chat.$DOMAIN: ${GREEN}✓${NC} $FRONTEND_DNS"
 else

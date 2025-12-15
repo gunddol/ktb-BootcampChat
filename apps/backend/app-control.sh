@@ -22,8 +22,8 @@ HEALTH_CHECK_URL="http://localhost:5001/api/health"
 HEALTH_CHECK_TIMEOUT=60  # seconds
 HEALTH_CHECK_INTERVAL=2  # seconds
 
-# JVM Options
-JVM_OPTS="${JVM_OPTS:--Xmx1024m -Xms512m}"
+# JVM Options - Optimized for Load Testing
+JVM_OPTS="${JVM_OPTS:--Xmx2048m -Xms1024m}"
 
 # Spring Profile
 SPRING_PROFILE="${SPRING_PROFILE:-prod}"
@@ -58,6 +58,40 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Find Java executable
+find_java() {
+    # First try command -v
+    if command -v java &> /dev/null; then
+        echo "java"
+        return 0
+    fi
+    
+    # Try common Java locations (Java 21 우선)
+    for java_path in \
+        /usr/lib/jvm/java-21-openjdk-amd64/bin/java \
+        /usr/lib/jvm/java-21-openjdk-*/bin/java \
+        /usr/lib/jvm/java-17-openjdk-amd64/bin/java \
+        /usr/lib/jvm/java-17-openjdk-*/bin/java \
+        /usr/lib/jvm/java-*-openjdk-*/bin/java \
+        /usr/local/bin/java \
+        /usr/bin/java \
+        /opt/java/bin/java; do
+        if [ -x "$java_path" ] 2>/dev/null; then
+            echo "$java_path"
+            return 0
+        fi
+    done
+    
+    # Search for java in /usr
+    local found_java=$(find /usr -name java -type f 2>/dev/null | grep -E "bin/java$" | head -1)
+    if [ -n "$found_java" ] && [ -x "$found_java" ]; then
+        echo "$found_java"
+        return 0
+    fi
+    
+    return 1
+}
+
 # Check if JAR file exists
 check_jar() {
     if [ ! -f "$JAR_FILE" ]; then
@@ -65,6 +99,17 @@ check_jar() {
         log_info "Please build the application first or copy the JAR file"
         exit 1
     fi
+}
+
+# Check if Java is available
+check_java() {
+    local java_cmd=$(find_java)
+    if [ -z "$java_cmd" ]; then
+        log_error "Java not found!"
+        log_info "Please install Java 17 or set JAVA_HOME"
+        exit 1
+    fi
+    echo "$java_cmd"
 }
 
 # Get PID from file
@@ -143,6 +188,10 @@ start() {
     log_info "Starting $APP_NAME..."
 
     check_jar
+    
+    # Find Java executable
+    local java_cmd=$(check_java)
+    log_info "Using Java: $java_cmd"
 
     local pid=$(get_pid)
     if is_running "$pid"; then
@@ -184,7 +233,7 @@ start() {
     log_info "  JVM Options: $JVM_OPTS"
     log_info "  Log: $LOG_FILE"
 
-    nohup java $JVM_OPTS \
+    nohup "$java_cmd" $JVM_OPTS \
         -Dspring.profiles.active=$SPRING_PROFILE \
         -jar "$JAR_FILE" \
         >> "$LOG_FILE" 2>&1 &

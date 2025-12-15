@@ -12,6 +12,7 @@ import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.RoomRepository;
 import com.ktb.chatapp.repository.UserRepository;
+import com.ktb.chatapp.service.UserService;
 import com.ktb.chatapp.websocket.socketio.SocketUser;
 import com.ktb.chatapp.websocket.socketio.UserRooms;
 import java.time.LocalDateTime;
@@ -42,8 +43,9 @@ public class RoomLeaveHandler {
   private final UserRepository userRepository;
   private final UserRooms userRooms;
   private final MessageResponseMapper messageResponseMapper;
+    private final UserService userService;
 
-  @OnEvent(LEAVE_ROOM)
+    @OnEvent(LEAVE_ROOM)
   public void handleLeaveRoom(SocketIOClient client, String roomId) {
     try {
       String userId = getUserId(client);
@@ -59,8 +61,10 @@ public class RoomLeaveHandler {
         return;
       }
 
-      User user = userRepository.findById(userId).orElse(null);
+      //User user = userRepository.findById(userId).orElse(null);
+
       Room room = roomRepository.findById(roomId).orElse(null);
+      User user = userService.getUserProfile(userId);
 
       if (user == null || room == null) {
         log.warn("Room {} not found or user {} has no access", roomId, userId);

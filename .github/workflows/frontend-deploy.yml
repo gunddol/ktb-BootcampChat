@@ -1,136 +1,136 @@
-name: Frontend Deployment
+# name: Frontend Deployment
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/frontend/**'
-      - 'deployment-scripts/deploy-frontend-ci.sh'
-      - '.github/workflows/frontend-deploy.yml'
-  workflow_dispatch:  # 수동 실행 가능
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - 'apps/frontend/**'
+#       - 'deployment-scripts/deploy-frontend-ci.sh'
+#       - '.github/workflows/frontend-deploy.yml'
+#   workflow_dispatch:  # 수동 실행 가능
 
-env:
-  AWS_REGION: ap-northeast-2
-  NODE_VERSION: '18'
+# env:
+#   AWS_REGION: ap-northeast-2
+#   NODE_VERSION: '18'
 
-jobs:
-  build-and-deploy:
-    name: S3/CloudFront 배포
-    runs-on: ubuntu-latest
+# jobs:
+#   build-and-deploy:
+#     name: S3/CloudFront 배포
+#     runs-on: ubuntu-latest
     
-    steps:
-      - name: 코드 체크아웃
-        uses: actions/checkout@v4
+#     steps:
+#       - name: 코드 체크아웃
+#         uses: actions/checkout@v4
       
-      - name: Node.js 설치
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
+#       - name: Node.js 설치
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: ${{ env.NODE_VERSION }}
       
-      - name: 의존성 설치
-        working-directory: apps/frontend
-        run: npm install
+#       - name: 의존성 설치
+#         working-directory: apps/frontend
+#         run: npm install
       
-      - name: production env 파일 생성
-        working-directory: apps/frontend
-        run: |
-          cat > .env.production << EOF
-          NEXT_PUBLIC_API_URL=https://api.chat.goorm-ktb-015.goorm.team
-          NEXT_PUBLIC_SOCKET_URL=https://api.chat.goorm-ktb-015.goorm.team
-          NODE_ENV=production
-          EOF
+#       - name: production env 파일 생성
+#         working-directory: apps/frontend
+#         run: |
+#           cat > .env.production << EOF
+#           NEXT_PUBLIC_API_URL=https://api.chat.goorm-ktb-015.goorm.team
+#           NEXT_PUBLIC_SOCKET_URL=https://api.chat.goorm-ktb-015.goorm.team
+#           NODE_ENV=production
+#           EOF
       
-      - name: Next.js 빌드
-        working-directory: apps/frontend
-        run: |
-          # next.config.js - S3 export 설정
-          cat > next.config.js << 'EOF'
-          /** @type {import('next').NextConfig} */
-          const nextConfig = {
-            reactStrictMode: false,
-            transpilePackages: ['@vapor-ui/core', '@vapor-ui/icons'],
-            output: undefined,
-            images: { unoptimized: true },
-            trailingSlash: false,
-            compress: true,
-          };
-          module.exports = nextConfig;
-          EOF
+#       - name: Next.js 빌드
+#         working-directory: apps/frontend
+#         run: |
+#           # next.config.js - S3 export 설정
+#           cat > next.config.js << 'EOF'
+#           /** @type {import('next').NextConfig} */
+#           const nextConfig = {
+#             reactStrictMode: false,
+#             transpilePackages: ['@vapor-ui/core', '@vapor-ui/icons'],
+#             output: undefined,
+#             images: { unoptimized: true },
+#             trailingSlash: false,
+#             compress: true,
+#           };
+#           module.exports = nextConfig;
+#           EOF
           
-          npm run build
+#           npm run build
       
-      - name: AWS credentials 설정
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+#       - name: AWS credentials 설정
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ env.AWS_REGION }}
       
-      - name: S3 frontend 배포
-        env:
-          S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
-        working-directory: apps/frontend
-        if: false
-        run: |
-          # Upload all files with long cache
-          aws s3 sync out/ s3://$S3_BUCKET/ \
-            --delete \
-            --cache-control "public, max-age=31536000, immutable" \
-            --region $AWS_REGION
+#       - name: S3 frontend 배포
+#         env:
+#           S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
+#         working-directory: apps/frontend
+#         if: false
+#         run: |
+#           # Upload all files with long cache
+#           aws s3 sync out/ s3://$S3_BUCKET/ \
+#             --delete \
+#             --cache-control "public, max-age=31536000, immutable" \
+#             --region $AWS_REGION
           
-          # Override HTML files with no cache
-          aws s3 sync out/ s3://$S3_BUCKET/ \
-            --exclude "*" \
-            --include "*.html" \
-            --cache-control "public, max-age=0, must-revalidate" \
-            --region $AWS_REGION
+#           # Override HTML files with no cache
+#           aws s3 sync out/ s3://$S3_BUCKET/ \
+#             --exclude "*" \
+#             --include "*.html" \
+#             --cache-control "public, max-age=0, must-revalidate" \
+#             --region $AWS_REGION
           
-          echo "✅ S3 upload complete"
+#           echo "✅ S3 upload complete"
       
-      - name: CloudFront 무효화
-        env:
-          DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id $DISTRIBUTION_ID \
-            --paths "/*" \
-            --region $AWS_REGION
+#       - name: CloudFront 무효화
+#         env:
+#           DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+#         run: |
+#           aws cloudfront create-invalidation \
+#             --distribution-id $DISTRIBUTION_ID \
+#             --paths "/*" \
+#             --region $AWS_REGION
           
-          echo "✅ CloudFront cache invalidated"
+#           echo "✅ CloudFront cache invalidated"
       
-      - name: 배포 확인
-        env:
-          S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
-        run: |
-          # Wait for CloudFront invalidation
-          sleep 10
+#       - name: 배포 확인
+#         env:
+#           S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
+#         run: |
+#           # Wait for CloudFront invalidation
+#           sleep 10
           
-          # Test S3 website URL
-          WEBSITE_URL="http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com"
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $WEBSITE_URL)
+#           # Test S3 website URL
+#           WEBSITE_URL="http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com"
+#           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $WEBSITE_URL)
           
-          if [ "$HTTP_CODE" == "200" ]; then
-            echo "✅ S3 website is accessible (HTTP $HTTP_CODE)"
-          else
-            echo "⚠️  S3 website returned HTTP $HTTP_CODE"
-          fi
+#           if [ "$HTTP_CODE" == "200" ]; then
+#             echo "✅ S3 website is accessible (HTTP $HTTP_CODE)"
+#           else
+#             echo "⚠️  S3 website returned HTTP $HTTP_CODE"
+#           fi
           
-          # Test production URL
-          PROD_URL="https://chat.goorm-ktb-015.goorm.team"
-          PROD_CODE=$(curl -s -o /dev/null -w "%{http_code}" $PROD_URL)
+#           # Test production URL
+#           PROD_URL="https://chat.goorm-ktb-015.goorm.team"
+#           PROD_CODE=$(curl -s -o /dev/null -w "%{http_code}" $PROD_URL)
           
-          if [ "$PROD_CODE" == "200" ]; then
-            echo "✅ Production site is accessible (HTTP $PROD_CODE)"
-          else
-            echo "⚠️  Production site returned HTTP $PROD_CODE"
-          fi
+#           if [ "$PROD_CODE" == "200" ]; then
+#             echo "✅ Production site is accessible (HTTP $PROD_CODE)"
+#           else
+#             echo "⚠️  Production site returned HTTP $PROD_CODE"
+#           fi
       
-      - name: 배포 알림
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Frontend deployment successful!"
-            echo "🔗 URL: https://chat.goorm-ktb-015.goorm.team"
-          else
-            echo "❌ Frontend deployment failed!"
-          fi
+#       - name: 배포 알림
+#         if: always()
+#         run: |
+#           if [ "${{ job.status }}" == "success" ]; then
+#             echo "✅ Frontend deployment successful!"
+#             echo "🔗 URL: https://chat.goorm-ktb-015.goorm.team"
+#           else
+#             echo "❌ Frontend deployment failed!"
+#           fi

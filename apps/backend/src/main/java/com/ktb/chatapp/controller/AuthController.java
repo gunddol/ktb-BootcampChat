@@ -4,10 +4,7 @@ import com.ktb.chatapp.dto.*;
 import com.ktb.chatapp.event.SessionEndedEvent;
 import com.ktb.chatapp.model.User;
 import com.ktb.chatapp.repository.UserRepository;
-import com.ktb.chatapp.service.JwtService;
-import com.ktb.chatapp.service.SessionCreationResult;
-import com.ktb.chatapp.service.SessionMetadata;
-import com.ktb.chatapp.service.SessionService;
+import com.ktb.chatapp.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -46,6 +43,7 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+    private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final SessionService sessionService;
@@ -93,7 +91,9 @@ public class AuthController {
         if (errors != null) return errors;
         
         // Check existing user
-        if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
+
+        if (userRepository.existsByEmail(registerRequest.getEmail())){
+//        if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(StandardResponse.error("이미 등록된 이메일입니다."));
         }
@@ -159,6 +159,7 @@ public class AuthController {
             // Authenticate user
             User user = userRepository.findByEmail(loginRequest.getEmail().toLowerCase())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             user.getEmail(),
@@ -297,7 +298,9 @@ public class AuthController {
 
             // 토큰에서 사용자 정보 추출
             String userId = jwtService.extractUserId(token);
-            
+
+
+            //Todo: existId 구현
             Optional<User> userOpt = userRepository.findById(userId);
 
             if (userOpt.isEmpty()) {
@@ -349,7 +352,9 @@ public class AuthController {
 
             // 만료된 토큰이라도 사용자 정보는 추출 가능
             String userId = jwtService.extractUserIdFromExpiredToken(token);
-            
+
+
+            //Todo: existId
             Optional<User> userOpt = userRepository.findById(userId);
 
             if (userOpt.isEmpty()) {

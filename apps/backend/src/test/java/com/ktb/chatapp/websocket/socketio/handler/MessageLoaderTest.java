@@ -36,6 +36,9 @@ class MessageLoaderTest {
     
     @Mock
     private UserRepository userRepository;
+
+//    @Mock
+//    private UserService userService;
     
     @Mock
     private FileRepository fileRepository;
@@ -60,6 +63,7 @@ class MessageLoaderTest {
         messageLoader = new MessageLoader(
                 messageRepository,
                 userRepository,
+//                userService,
                 new MessageResponseMapper(fileRepository),
                 messageReadStatusService
         );
@@ -81,6 +85,7 @@ class MessageLoaderTest {
         
         lenient().when(userRepository.findAllById(anySet()))
                 .thenReturn(List.of(testUser));
+//        lenient().when(userService.getUserProfile(anyString())).thenReturn(testUser);
         lenient().doNothing().when(messageReadStatusService).updateReadStatus(anyList(), anyString());
     }
     
