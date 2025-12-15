@@ -31,13 +31,12 @@ import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.*;
 @ConditionalOnProperty(name = "socketio.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class MessageReadHandler {
-    
+
     private final SocketIOServer socketIOServer;
     private final MessageReadStatusService messageReadStatusService;
     private final MessageRepository messageRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
-    private final UserService userService;
 
     @OnEvent(MARK_MESSAGES_AS_READ)
     public void handleMarkAsRead(SocketIOClient client, MarkAsReadRequest data) {
@@ -51,10 +50,10 @@ public class MessageReadHandler {
             if (data == null || data.getMessageIds() == null || data.getMessageIds().isEmpty()) {
                 return;
             }
-            
+
             String roomId = messageRepository.findById(data.getMessageIds().getFirst())
                     .map(Message::getRoomId).orElse(null);
-            
+
             if (roomId == null || roomId.isBlank()) {
                 client.sendEvent(ERROR, Map.of("message", "Invalid room"));
                 return;
@@ -67,12 +66,11 @@ public class MessageReadHandler {
                 return;
             }
 
-            Room room = roomRepository.findById(roomId).orElse(null);
-            if (room == null || !room.getParticipantIds().contains(userId)) {
+            if (!roomRepository.existsByIdAndParticipantIdsContains(roomId, userId)) {
                 client.sendEvent(ERROR, Map.of("message", "Room access denied"));
                 return;
             }
-            
+
             messageReadStatusService.updateReadStatus(data.getMessageIds(), userId);
 
             MessagesReadResponse response = new MessagesReadResponse(userId, data.getMessageIds());
@@ -84,11 +82,10 @@ public class MessageReadHandler {
         } catch (Exception e) {
             log.error("Error handling markMessagesAsRead", e);
             client.sendEvent(ERROR, Map.of(
-                    "message", "읽음 상태 업데이트 중 오류가 발생했습니다."
-            ));
+                    "message", "읽음 상태 업데이트 중 오류가 발생했습니다."));
         }
     }
-    
+
     private String getUserId(SocketIOClient client) {
         var user = (SocketUser) client.get("user");
         return user.id();

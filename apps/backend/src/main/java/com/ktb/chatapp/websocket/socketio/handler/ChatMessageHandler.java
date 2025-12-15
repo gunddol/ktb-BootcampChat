@@ -112,8 +112,7 @@ public class ChatMessageHandler {
       }
 
       String roomId = data.getRoom();
-      Room room = roomRepository.findById(roomId).orElse(null);
-      if (room == null || !room.getParticipantIds().contains(socketUser.id())) {
+      if (!roomRepository.existsByIdAndParticipantIdsContains(roomId, socketUser.id())) {
         recordError("room_access_denied");
         client.sendEvent(ERROR, Map.of(
             "code", "MESSAGE_ERROR",
