@@ -10,6 +10,7 @@ import com.ktb.chatapp.repository.FileRepository;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.UserRepository;
 import com.ktb.chatapp.service.MessageReadStatusService;
+import com.ktb.chatapp.service.RedisMessageService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -23,12 +24,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 
 @SpringBootTest
@@ -57,6 +65,9 @@ class MessageLoaderIntegrationTest {
     @MockitoSpyBean
     private MessageReadStatusService messageReadStatusService;
 
+    @MockitoSpyBean
+    private RedisMessageService redisMessageService;
+
     private MessageLoader messageLoader;
     private Faker faker;
     private String roomId;
@@ -68,9 +79,37 @@ class MessageLoaderIntegrationTest {
         roomId = faker.internet().uuid();
         userId = faker.internet().uuid();
 
+        // RedisMessageService mock 설정: MessageRepository를 통해 조회한 결과를 반환
+        when(redisMessageService.findByRoomId(anyString(), any(Pageable.class)))
+                .thenAnswer(invocation -> {
+                    String roomIdParam = invocation.getArgument(0);
+                    Pageable pageable = invocation.getArgument(1);
+                    
+                    // MessageRepository를 통해 실제로 조회
+                    // 모든 메시지를 조회한 후 필터링하여 Page 생성
+                    List<Message> allMessages = messageRepository.findAll().stream()
+                            .filter(msg -> roomIdParam.equals(msg.getRoomId()))
+                            .filter(msg -> !Boolean.TRUE.equals(msg.getIsDeleted()))
+                            .sorted((m1, m2) -> {
+                                if (m1.getTimestamp() == null || m2.getTimestamp() == null) {
+                                    return 0;
+                                }
+                                return m2.getTimestamp().compareTo(m1.getTimestamp()); // DESC
+                            })
+                            .toList();
+                    
+                    int start = (int) pageable.getOffset();
+                    int end = Math.min(start + pageable.getPageSize(), allMessages.size());
+                    List<Message> pageContent = start < allMessages.size() 
+                            ? allMessages.subList(start, end) 
+                            : List.of();
+                    
+                    return new PageImpl<>(pageContent, pageable, allMessages.size());
+                });
+
         // MessageLoader 인스턴스 생성
         messageLoader = new MessageLoader(
-                messageRepository,
+                redisMessageService,
                 userRepository,
 //                userService,
                 new MessageResponseMapper(fileRepository),
