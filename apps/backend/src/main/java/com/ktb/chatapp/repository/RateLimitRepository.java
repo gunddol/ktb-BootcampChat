@@ -36,10 +36,29 @@ public class RateLimitRepository{
     public RateLimit save(RateLimit rateLimit) {
         String clientIdKey = ClientIdKey(rateLimit.getClientId());
 
-        redisTemplate.opsForValue().set(clientIdKey, rateLimit);
+        // TTL 계산: expiresAt까지 남은 시간
+        long ttlSeconds = java.time.Duration.between(
+            java.time.Instant.now(), 
+            rateLimit.getExpiresAt()
+        ).getSeconds();
+        
+        // TTL이 0보다 크면 설정, 아니면 기본 1시간
+        if (ttlSeconds > 0) {
+            redisTemplate.opsForValue().set(
+                clientIdKey, 
+                rateLimit, 
+                java.time.Duration.ofSeconds(ttlSeconds)
+            );
+        } else {
+            // 만료 시간이 지났거나 없으면 기본 1시간 TTL
+            redisTemplate.opsForValue().set(
+                clientIdKey, 
+                rateLimit, 
+                java.time.Duration.ofHours(1)
+            );
+        }
 
         return rateLimit;
-
     }
 
     public void deleteAll(){

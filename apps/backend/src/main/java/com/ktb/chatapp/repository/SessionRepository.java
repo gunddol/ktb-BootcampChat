@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -42,7 +43,6 @@ public class SessionRepository {
     }
 
     public Optional<Session> findByUserId(String userId) {
-
         String userKey = userKey(userId);
         Set<Object> sessionIds = redisTemplate.opsForSet().members(userKey);
 
@@ -50,18 +50,38 @@ public class SessionRepository {
             return Optional.empty();
         }
 
-        for (Object obj : sessionIds) {
-            String sessionId = obj.toString();
-            String sessionKey = sessionKey(sessionId);
+        // 성능 개선: Pipeline을 사용하여 여러 키를 한 번에 조회 (N+1 문제 해결)
+        List<String> sessionKeyList = sessionIds.stream()
+            .map(obj -> sessionKey(obj.toString()))
+            .collect(java.util.stream.Collectors.toList());
 
-            Object sessionObject = redisTemplate.opsForValue().get(sessionKey);
-
-            // 살아있는 세션이면 바로 반환
-            if (sessionObject instanceof Session) {
-                return Optional.of((Session) sessionObject);
+        // Pipeline으로 일괄 조회
+        List<Object> sessions = redisTemplate.executePipelined(
+            (org.springframework.data.redis.core.RedisCallback<Object>) connection -> {
+                for (String key : sessionKeyList) {
+                    connection.get(key.getBytes());
+                }
+                return null;
             }
-            // 죽은 세션이면 정리
-            redisTemplate.opsForSet().remove(userKey, sessionId);
+        );
+
+        // 첫 번째 유효한 세션 반환 및 죽은 세션 정리
+        int index = 0;
+        for (Object sessionObj : sessions) {
+            if (sessionObj instanceof Session) {
+                return Optional.of((Session) sessionObj);
+            } else {
+                // 죽은 세션 정리
+                String sessionId = sessionIds.stream()
+                    .skip(index)
+                    .findFirst()
+                    .map(Object::toString)
+                    .orElse(null);
+                if (sessionId != null) {
+                    redisTemplate.opsForSet().remove(userKey, sessionId);
+                }
+            }
+            index++;
         }
 
         return Optional.empty();

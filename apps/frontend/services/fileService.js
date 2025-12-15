@@ -74,25 +74,179 @@ class FileService {
     return { success: true };
   }
 
-  async uploadFile(file, onProgress, token, sessionId) {
+  async uploadFile(file, onProgress, token, sessionId, usePresignedUrl = true) {
     const validationResult = await this.validateFile(file);
     if (!validationResult.success) {
       return validationResult;
     }
 
+    // Presigned URL 방식 사용 (기본값)
+    if (usePresignedUrl) {
+      return this.uploadFileWithPresignedUrl(file, onProgress, token, sessionId);
+    }
+
+    // 기존 방식 (하위 호환성)
+    return this.uploadFileLegacy(file, onProgress, token, sessionId);
+  }
+
+  async uploadFileWithPresignedUrl(file, onProgress, token, sessionId, retryCount = 0) {
+    const source = CancelToken.source();
+    this.activeUploads.set(file.name, source);
+
+    try {
+      // 1. Presigned URL 요청 (재시도 가능)
+      let presignedResponse;
+      try {
+        const presignedUrlEndpoint = this.baseUrl ?
+          `${this.baseUrl}/api/files/upload/presigned` :
+          '/api/files/upload/presigned';
+
+        presignedResponse = await axiosInstance.post(
+          presignedUrlEndpoint,
+          {
+            filename: file.name,
+            contentType: file.type,
+            fileSize: file.size
+          },
+          {
+            cancelToken: source.token,
+            withCredentials: true,
+            timeout: 10000 // 10초 타임아웃
+          }
+        );
+      } catch (error) {
+        // Presigned URL 요청 실패 시 재시도
+        if (retryCount < this.retryAttempts && this.isRetryableError(error)) {
+          await this.delay(this.retryDelay * (retryCount + 1));
+          return this.uploadFileWithPresignedUrl(file, onProgress, token, sessionId, retryCount + 1);
+        }
+        throw error;
+      }
+
+      if (!presignedResponse.data || !presignedResponse.data.success) {
+        throw new Error(presignedResponse.data?.message || 'Presigned URL 생성에 실패했습니다.');
+      }
+
+      const { presignedUrl, filename: serverFilename } = presignedResponse.data;
+
+      // 2. Presigned URL로 직접 S3 업로드 (재시도 가능)
+      let s3UploadResponse;
+      try {
+        s3UploadResponse = await axios.put(presignedUrl, file, {
+          headers: {
+            'Content-Type': file.type
+          },
+          cancelToken: source.token,
+          timeout: 300000, // 5분 타임아웃 (대용량 파일용)
+          onUploadProgress: (progressEvent) => {
+            if (onProgress) {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              onProgress(percentCompleted);
+            }
+          }
+        });
+      } catch (error) {
+        // S3 업로드 실패 시 재시도
+        if (retryCount < this.retryAttempts && this.isRetryableError(error)) {
+          await this.delay(this.retryDelay * (retryCount + 1));
+          return this.uploadFileWithPresignedUrl(file, onProgress, token, sessionId, retryCount + 1);
+        }
+        throw error;
+      }
+
+      // 3. 업로드 완료 콜백 (재시도 가능)
+      let completeResponse;
+      try {
+        const completeEndpoint = this.baseUrl ?
+          `${this.baseUrl}/api/files/upload/complete` :
+          '/api/files/upload/complete';
+
+        completeResponse = await axiosInstance.post(
+          completeEndpoint,
+          {
+            filename: serverFilename,
+            originalFilename: file.name,
+            contentType: file.type,
+            fileSize: file.size
+          },
+          {
+            cancelToken: source.token,
+            withCredentials: true,
+            timeout: 10000
+          }
+        );
+      } catch (error) {
+        // 콜백 실패 시 재시도
+        if (retryCount < this.retryAttempts && this.isRetryableError(error)) {
+          await this.delay(this.retryDelay * (retryCount + 1));
+          return this.uploadFileWithPresignedUrl(file, onProgress, token, sessionId, retryCount + 1);
+        }
+        throw error;
+      }
+
+      this.activeUploads.delete(file.name);
+
+      if (!completeResponse.data || !completeResponse.data.success) {
+        return {
+          success: false,
+          message: completeResponse.data?.message || '파일 업로드 완료 처리에 실패했습니다.'
+        };
+      }
+
+      const fileData = completeResponse.data.file;
+      return {
+        success: true,
+        data: {
+          ...completeResponse.data,
+          file: {
+            ...fileData,
+            url: this.getFileUrl(fileData.filename, true)
+          }
+        }
+      };
+
+    } catch (error) {
+      this.activeUploads.delete(file.name);
+
+      if (isCancel(error)) {
+        return {
+          success: false,
+          message: '업로드가 취소되었습니다.'
+        };
+      }
+
+      if (error.response?.status === 401) {
+        throw new Error('Authentication expired. Please login again.');
+      }
+
+      // 최대 재시도 횟수 초과 시 기존 방식으로 폴백
+      if (retryCount >= this.retryAttempts) {
+        console.warn('Presigned URL 업로드 최대 재시도 횟수 초과, 기존 방식으로 폴백:', error);
+        return this.uploadFileLegacy(file, onProgress, token, sessionId);
+      }
+
+      return this.handleUploadError(error);
+    }
+  }
+
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async uploadFileLegacy(file, onProgress, token, sessionId) {
+    const source = CancelToken.source();
+    this.activeUploads.set(file.name, source);
+
     try {
       const formData = new FormData();
       formData.append('file', file);
-
-      const source = CancelToken.source();
-      this.activeUploads.set(file.name, source);
 
       const uploadUrl = this.baseUrl ?
         `${this.baseUrl}/api/files/upload` :
         '/api/files/upload';
 
-      // token과 sessionId는 axios 인터셉터에서 자동으로 추가되므로
-      // 여기서는 명시적으로 전달하지 않아도 됩니다
       const response = await axiosInstance.post(uploadUrl, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'

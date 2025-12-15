@@ -23,14 +23,13 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @AllArgsConstructor
 @Document(collection = "rooms")
 @CompoundIndexes({
-    @CompoundIndex(name = "name_createdAt_idx", def = "{'name': 1, 'createdAt': -1}")
+        @CompoundIndex(name = "name_createdAt_idx", def = "{'name': 1, 'createdAt': -1}")
 })
 public class Room {
 
     @Id
     private String id;
 
-    @Indexed
     private String name;
 
     private String creator;
@@ -47,7 +46,7 @@ public class Room {
     @Field("participantIds")
     @Builder.Default
     private Set<String> participantIds = new HashSet<>();
-    
+
     /**
      * 방에 참가자를 추가한다.
      *
@@ -59,7 +58,7 @@ public class Room {
         }
         this.participantIds.add(userId);
     }
-    
+
     /**
      * 방에서 참가자를 제거한다.
      *
@@ -70,7 +69,7 @@ public class Room {
             this.participantIds.remove(userId);
         }
     }
-    
+
     /**
      * 방이 비어있는지 확인한다.
      *
@@ -79,7 +78,7 @@ public class Room {
     public boolean isEmpty() {
         return this.participantIds == null || this.participantIds.isEmpty();
     }
-    
+
     /**
      * 방의 참가자 수를 반환한다.
      *

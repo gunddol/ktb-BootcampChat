@@ -16,14 +16,16 @@ Backend 배포는 3단계로 진행됩니다:
 # ------------------------------------------------------------------
 # 1. 환경변수 설정 (필수)
 # ------------------------------------------------------------------
-export BASTION_IP=52.79.105.90
-export MONGO_URI=mongodb://10.0.101.160:27017/ktb-chat
+export BASTION_IP=3.38.151.35
+export MONGO_URI=mongodb://ktb-app:ktb-015@10.0.101.124:27017,10.0.101.78:27017/ktb_chat_db?replicaSet=ktb-rs0&authSource=admin
 export REDIS_HOST=10.0.101.163
 export REDIS_PORT=6379
 export REDIS_PASSWORD=ktb-015
+export REDIS_REPLICAS=10.0.101.164:6379,10.0.101.11:6379
 export JWT_SECRET=78ba3b45fa8b7a3c50e34acbcd887f76ca387034712e152b7bb20bd82841067a
 export ENCRYPTION_KEY=7132063e4cae50af2b8b834e417de700985d82c081c072a91a8c96692fb61f625ec487c6e9d54d61507115db8d61a0e18e90647739fc6c69a56e3a63ef821fe8
 export ENCRYPTION_SALT=c6e78f35b4414a26e69142befdd7561ae14bccd8e31b50aafedd2d834eeeb061
+
 
 # ------------------------------------------------------------------
 # 2. JAR 빌드

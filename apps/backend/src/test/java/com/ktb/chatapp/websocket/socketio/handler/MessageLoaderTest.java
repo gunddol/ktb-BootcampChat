@@ -8,6 +8,7 @@ import com.ktb.chatapp.repository.FileRepository;
 import com.ktb.chatapp.repository.MessageRepository;
 import com.ktb.chatapp.repository.UserRepository;
 import com.ktb.chatapp.service.MessageReadStatusService;
+import com.ktb.chatapp.service.RedisMessageService;
 import net.datafaker.Faker;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +33,7 @@ import static org.mockito.Mockito.*;
 class MessageLoaderTest {
     
     @Mock
-    private MessageRepository messageRepository;
+    private RedisMessageService redisMessageService;
     
     @Mock
     private UserRepository userRepository;
@@ -61,7 +62,7 @@ class MessageLoaderTest {
         userId = faker.internet().uuid();
         
         messageLoader = new MessageLoader(
-                messageRepository,
+                redisMessageService,
                 userRepository,
 //                userService,
                 new MessageResponseMapper(fileRepository),
@@ -110,8 +111,8 @@ class MessageLoaderTest {
         // [21시간 전, 22시간 전, ..., 50시간 전]
         var messagePage = getMessagePage(first30Messages);
         
-        when(messageRepository.findByRoomIdAndIsDeletedAndTimestampBefore(
-                eq(roomId), eq(false), any(LocalDateTime.class), any(Pageable.class)))
+        when(redisMessageService.findByRoomId(
+                eq(roomId), any(Pageable.class)))
                 .thenReturn(messagePage);
         
         // When: 메시지 로드
@@ -145,8 +146,8 @@ class MessageLoaderTest {
         // [1시간 전, 2시간 전, ..., 30시간 전]
         Page<Message> messagePage = getMessagePage(last30Messages);
         
-        when(messageRepository.findByRoomIdAndIsDeletedAndTimestampBefore(
-                eq(roomId), eq(false), any(LocalDateTime.class), any(Pageable.class)))
+        when(redisMessageService.findByRoomId(
+                eq(roomId), any(Pageable.class)))
                 .thenReturn(messagePage);
         
         // When: 초기 메시지 로드
@@ -172,8 +173,8 @@ class MessageLoaderTest {
     @Test
     @DisplayName("loadInitialMessages: 에러 시 빈 응답")
     void loadInitialMessages_shouldReturnEmptyOnError() {
-        when(messageRepository.findByRoomIdAndIsDeletedAndTimestampBefore(
-                any(), anyBoolean(), any(LocalDateTime.class), any(Pageable.class)))
+        when(redisMessageService.findByRoomId(
+                any(), any(Pageable.class)))
                 .thenThrow(new RuntimeException("DB error"));
         
         FetchMessagesRequest req = new FetchMessagesRequest(roomId, 30, null);

@@ -1,0 +1,32 @@
+# Test Profile Configuration
+rate.limit.enabled=false
+
+# Logging
+logging.level.com.ktb.chatapp=DEBUG
+logging.level.org.springframework.security=INFO
+
+# Redis session (reuse prod settings)
+spring.session.store-type=redis
+spring.data.redis.host=${REDIS_HOST:localhost}
+spring.data.redis.port=${REDIS_PORT:6379}
+spring.data.redis.password=${REDIS_PASSWORD:}
+
+# MongoDB (reuse prod settings)
+spring.data.mongodb.uri=${MONGODB_URI:mongodb://localhost:27017/chat}
+
+# JWT (reuse prod settings but with shorter expiration for testing)
+jwt.secret=${JWT_SECRET:test-secret-key-please-change-in-production}
+jwt.expiration=${JWT_EXPIRATION:3600000}
+jwt.refresh-expiration=${JWT_REFRESH_EXPIRATION:86400000}
+
+# S3 (reuse prod settings)
+aws.region=${AWS_REGION:ap-northeast-2}
+aws.s3.bucket=${AWS_S3_BUCKET:ktb-015-chat-storage}
+
+# File upload
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
+file.upload-dir=./uploads
+
+# CORS (allow all for testing)
+cors.allowed-origins=*

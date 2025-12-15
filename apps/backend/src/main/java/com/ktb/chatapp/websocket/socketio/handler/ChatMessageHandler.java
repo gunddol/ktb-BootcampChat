@@ -35,13 +35,13 @@ import static com.ktb.chatapp.websocket.socketio.SocketIOEvents.*;
 @RequiredArgsConstructor
 public class ChatMessageHandler {
   private final SocketIOServer socketIOServer;
-  private final MessageRepository messageRepository;
+  private final RedisMessageService redisMessageService;
   private final RoomRepository roomRepository;
-//  private final UserRepository userRepository;
+  // private final UserRepository userRepository;
   private final UserService userService;
   private final FileRepository fileRepository;
   private final SessionService sessionService;
-//  private final UserService userService;
+  // private final UserService userService;
   private final BannedWordChecker bannedWordChecker;
   private final RateLimitService rateLimitService;
   private final MeterRegistry meterRegistry;
@@ -100,7 +100,7 @@ public class ChatMessageHandler {
     }
 
     try {
-//      User sender = userRepository.findById(socketUser.id()).orElse(null);
+      // User sender = userRepository.findById(socketUser.id()).orElse(null);
       User sender = userService.getUserProfile(socketUser.id());
       if (sender == null) {
         recordError("user_not_found");
@@ -112,8 +112,7 @@ public class ChatMessageHandler {
       }
 
       String roomId = data.getRoom();
-      Room room = roomRepository.findById(roomId).orElse(null);
-      if (room == null || !room.getParticipantIds().contains(socketUser.id())) {
+      if (!roomRepository.existsByIdAndParticipantIdsContains(roomId, socketUser.id())) {
         recordError("room_access_denied");
         client.sendEvent(ERROR, Map.of(
             "code", "MESSAGE_ERROR",
@@ -150,7 +149,7 @@ public class ChatMessageHandler {
         return;
       }
 
-      Message savedMessage = messageRepository.save(message);
+      Message savedMessage = redisMessageService.save(message);
 
       socketIOServer.getRoomOperations(roomId)
           .sendEvent(MESSAGE, createMessageResponse(savedMessage, sender));
